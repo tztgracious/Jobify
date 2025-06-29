@@ -1,54 +1,50 @@
-# GenView — AI-Powered Digital Human Interview Coach
-> **Practice smarter. Interview better.**  — Real-time AI feedback for every candidate.
+# Jobify — AI-Powered Interview Coach
 
-[![Build](https://img.shields.io/github/actions/workflow/status/your-org/genview/ci.yml?branch=main)](../../actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Made with ❤️ by Jobify](https://img.shields.io/badge/made%20by-Jobify-fb7299?logo=github)](#team)
 
 Proudly created by **Jobify**.
 
-
 ---
 
 ## Getting Started
 
-Below is the **minimal set of third‑party tools, libraries, SDKs and cloud services that GenView depends on _directly_**.  
-(Transitive dependencies installed automatically by the packages below need not be listed.)
+Below is the minimal set of third‑party tools, libraries, SDKs and cloud services that Jobify depends on directly.  
+## 🖥️ Front-End Dependencies
 
-| Layer        | Technology / Service | Purpose | Link |
-|--------------|----------------------|---------|------|
-| **Front‑End** | React 18 + Vite      | SPA shell, routing, hot‑reload | <https://react.dev> |
-|              | Tailwind CSS         | Utility‑first styling          | <https://tailwindcss.com> |
-|              | React Query          | Declarative data‑fetching cache | <https://tanstack.com/query/latest> |
-|              | framer‑motion        | Micro‑interactions / animations | <https://www.framer.com/motion/> |
-| **Back‑End** | FastAPI 0.111        | Typed REST/WS APIs, OpenAPI docs | <https://fastapi.tiangolo.com> |
-|              | Uvicorn              | ASGI web‑server                | <https://www.uvicorn.org> |
-|              | PyTorch 2.3 + Transformers | Fine‑tuned LLM & embedding models | <https://pytorch.org> |
-|              | Sentence‑Transformers | Real‑time similarity search    | <https://www.sbert.net> |
-|              | LangChain           | RAG orchestration / prompt‑flows | <https://www.langchain.com> |
-|              | Weights & Biases     | Experiment tracking & dashboards | <https://wandb.ai> |
-| **Infra / Ops** | PostgreSQL 16       | Persist interview records & analytics | <https://www.postgresql.org> |
-|              | Redis 7             | Low‑latency cache / pub‑sub     | <https://redis.io> |
-|              | Docker 24           | Dev/prod parity containerisation | <https://docs.docker.com> |
-|              | GitHub Actions      | CI / CD pipeline                | <https://github.com/features/actions> |
+| Library/Tool | Purpose | Link |
+|--------------|---------|------|
+| React.js | UI framework for building interactive interfaces | [reactjs.org](https://reactjs.org/) |
+| Quill | Rich text editor for user input | [quilljs.com](https://quilljs.com/) |
+| Video.js | HTML5 video player | [videojs.com](https://videojs.com/) |
+| AWS S3 JS SDK | Upload and retrieve videos from AWS S3 | [docs.aws.amazon.com](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) |
+| Countdown.js | Countdown timer for interviews | [GitHub - hilios/jQuery.countdown](https://github.com/hilios/jQuery.countdown) |
+| Bootstrap | UI component library for layouts and styling | [getbootstrap.com](https://getbootstrap.com/) |
+| Tailwind CSS | Utility-first CSS framework for custom styling | [tailwindcss.com](https://tailwindcss.com/) |
 
-> **Build & Run (local dev)**  
-> ```bash
-> # 1. Clone
-> git clone https://github.com/<ORG>/genview.git && cd genview
-> 
-> # 2. Back‑end
-> cd server
-> python -m venv .venv && source .venv/bin/activate
-> pip install -r requirements.txt
-> uvicorn app.main:app --reload
-> 
-> # 3. Front‑end (new shell)
-> cd web
-> npm ci
-> npm run dev
-> ```
-> Visit <http://localhost:5173> in your browser.
+---
+
+## 🧠 Back-End Dependencies
+
+| Library/Tool | Purpose | Link |
+|--------------|---------|------|
+| LlamaParse | Process PDF files | [llamahub.ai/tools/llamaparse](https://llamahub.ai/tools/llamaparse) |
+| OpenAI API | Extract keywords and form questions | [platform.openai.com](https://platform.openai.com/docs/) |
+| spaCy | NLP toolkit in Python | [spacy.io](https://spacy.io/) |
+| LanguageTool | Grammar and style checking | [languagetool.org](https://languagetool.org/) |
+| Neo4j | Graph database for knowledge representation | [neo4j.com](https://neo4j.com/) |
+| Express.js | Minimal backend framework for Node.js | [expressjs.com](https://expressjs.com/) |
+| AWS Boto3 SDK | Python SDK for accessing AWS services (e.g., S3) | [boto3.amazonaws.com](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) |
+| FFmpeg | Video/audio processing for recordings | [ffmpeg.org](https://ffmpeg.org/) |
+
+---
+
+## 🧰 Infrastructure & Data Storage
+
+| Library/Tool | Purpose | Link |
+|--------------|---------|------|
+| PostgreSQL | Relational database | [postgresql.org](https://www.postgresql.org/) |
+| MongoDB | NoSQL document database | [mongodb.com](https://www.mongodb.com/) |
 
 ---
 
