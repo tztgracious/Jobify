@@ -28,7 +28,7 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 
 | Library/Tool | Purpose | Link |
 |--------------|---------|------|
-| LlamaParse | Process PDF files | [llamahub.ai/tools/llamaparse](https://llamahub.ai/tools/llamaparse) |
+| LlamaParse | Process PDF files | [llamaindex.ai/llamaparse](https://www.llamaindex.ai/llamaparse?gad_source=1&gad_campaignid=21116317807&gbraid=0AAAAA9du_J0CkmThGan_q1frhfR59JbAE&gclid=Cj0KCQjwyIPDBhDBARIsAHJyyVjUe6Zg1Wtgn6OlPtRq2REI2zOr368RSxqPsimjxi_sFbUiBKNWaWwaAr_AEALw_wcB) |
 | OpenAI API | Extract keywords and form questions | [platform.openai.com](https://platform.openai.com/docs/) |
 | spaCy | NLP toolkit in Python | [spacy.io](https://spacy.io/) |
 | LanguageTool | Grammar and style checking | [languagetool.org](https://languagetool.org/) |
@@ -51,22 +51,7 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 ## Model and Engine
 
 > **Story‑map**  
-> ![](docs/storymap.png) <!-- TODO: replace with the exported PNG or embed PDF -->
-
-GenView’s core is a two‑tier **Conversation & Feedback Engine**:
-
-
-
-| Block                     | Responsibility                                                        | Implementation notes                                                                                                 |
-| ------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **ASR**                   | Convert candidate speech to text in ≈ real‑time.                      | OpenAI Whisper‑v3 (English, 16 kHz), streaming via websockets.                                                       |
-| **NLU**                   | Extract intents, slot‑fill, sentiment.                                | `all‑minilm‑l6‑v2` for embeddings + lightweight classifiers.                                                         |
-| **Dialogue Controller**   | State machine that chooses the next system action.                    | Pydantic state models; persistence in Redis for recovery.                                                            |
-| **LLM Interview Agent**   | Generates interviewer questions, follow‑ups and “probing” hints.      | Fine‑tuned Llama‑3‑8B‑Instruct served with vLLM; prompt templates parameterised by role, difficulty, STAR framework. |
-| **Speech/Video Features** | Measure WPM, pauses, pitch variance, gaze and facial affect.          | Mediapipe + torchaudio; runs on separate GPU worker.                                                                 |
-| **Scoring & Rubrics**     | Map raw features to rubric levels (e.g. clarity, confidence).         | XGBoost models calibrated on \~2k labelled mock‑interviews.                                                          |
-| **Report Builder**        | Fuse rubric scores, LLM critique, transcripts into a PDF/HTML report. | Jinja2 templates → WeasyPrint rendering; saved in S3.                                                                |
-
+> ![](docs/storymap.png) 
 ---
 
 ## APIs and Controller
