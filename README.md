@@ -10,7 +10,7 @@ Proudly created by **Jobify**.
 ## Getting Started
 
 Below is the minimal set of third‑party tools, libraries, SDKs and cloud services that Jobify depends on directly.  
-## 🖥️ Front-End Dependencies
+### 🖥️ Front-End Dependencies
 
 | Library/Tool | Purpose | Link |
 |--------------|---------|------|
@@ -24,7 +24,7 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 
 ---
 
-## 🧠 Back-End Dependencies
+### 🧠 Back-End Dependencies
 
 | Library/Tool | Purpose | Link |
 |--------------|---------|------|
@@ -39,7 +39,7 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 
 ---
 
-## 🧰 Infrastructure & Data Storage
+### 🧰 Infrastructure & Data Storage
 
 | Library/Tool | Purpose | Link |
 |--------------|---------|------|
@@ -50,8 +50,11 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 
 ## Model and Engine
 
-> **Story‑map**  
-> ![](docs/storymap.png) 
+### Story Map
+![](story_map.png)
+
+### Engine Architecture 
+![](engine_architecture.png)
 ---
 
 ## APIs and Controller
