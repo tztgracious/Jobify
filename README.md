@@ -1,7 +1,12 @@
-# GenView — AI‑Powered Digital Human Interview Coach
-### Team name - \textit{Jobify}
+# GenView — AI-Powered Digital Human Interview Coach
+> **Practice smarter. Interview better.**  — Real-time AI feedback for every candidate.
 
-> “Helping applicants practise, reflect and improve – one realistic mock interview at a time.”
+[![Build](https://img.shields.io/github/actions/workflow/status/your-org/genview/ci.yml?branch=main)](../../actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Made with ❤️ by Jobify](https://img.shields.io/badge/made%20by-Jobify-fb7299?logo=github)](#team)
+
+Proudly created by **Team Jobify**.
+
 
 ---
 
