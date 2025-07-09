@@ -1,21 +1,20 @@
-from django.shortcuts import render
-
 import os
-import requests
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from dotenv import load_dotenv
 
+import requests
 from django.conf import settings
 from django.http import JsonResponse
+from dotenv import load_dotenv
+from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 from .utils import grammar_check, get_keywords_using_openai
 
 load_dotenv('../.api-keys')  # Adjust the path as necessary
 
 LLAMA_API_KEY = os.getenv("LLAMA_PARSE_API_KEY")
 LLAMA_API_URL = "https://api.llamaindex.ai/v1/parse"
+
 
 @api_view(['POST'])
 def parse_resume(request):
@@ -45,7 +44,7 @@ def debug_view(request):
         return JsonResponse({"error": "Debug endpoint disabled in production"}, status=403)
 
     sample_text = "My name is Alice and I have 3 years experience in machine learning."
-    
+
     # run your functions
     keywords = get_keywords_using_openai(sample_text)
     grammar_result = grammar_check(sample_text)
