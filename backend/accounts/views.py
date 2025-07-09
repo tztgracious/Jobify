@@ -1,5 +1,8 @@
 # Create your views here.
+from django.contrib.auth.hashers import check_password
+from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -14,11 +17,6 @@ class SignupView(APIView):
             serializer.save()
             return Response({"message": "User created"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-from rest_framework.decorators import api_view
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.hashers import check_password
 
 
 @api_view(['POST'])
