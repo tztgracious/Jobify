@@ -18,13 +18,14 @@ class SignupView(APIView):
 from rest_framework import generics
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.hashers import check_password
 
 @api_view(['POST'])
 def login_view(request):
     email = request.data.get('email')
-    password = request.data.get('password_hash')
+    password = request.data.get('password')
 
     user = get_object_or_404(User, email=email)
-    if user.password_hash == password:
+    if check_password(password, user.password):
         return Response({"message": "Login successful"})
-    return Response({"error": "Invalid credentials"}, status=400)
+    return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
