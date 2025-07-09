@@ -7,7 +7,7 @@ Proudly created by **Jobify**.
 
 ---
 
-## Getting Started
+## Getting Started
 
 Below is the minimal set of third‑party tools, libraries, SDKs and cloud services that Jobify depends on directly.
 
