@@ -9,51 +9,54 @@ Proudly created by **Jobify**.
 
 ## Getting Started
 
-Below is the minimal set of third‑party tools, libraries, SDKs and cloud services that Jobify depends on directly.  
+Below is the minimal set of third‑party tools, libraries, SDKs and cloud services that Jobify depends on directly.
+
 ### 🖥️ Front-End Dependencies
 
-| Library/Tool | Purpose | Link |
-|--------------|---------|------|
-| React.js | UI framework for building interactive interfaces | [reactjs.org](https://reactjs.org/) |
-| Quill | Rich text editor for user input | [quilljs.com](https://quilljs.com/) |
-| Video.js | HTML5 video player | [videojs.com](https://videojs.com/) |
-| AWS S3 JS SDK | Upload and retrieve videos from AWS S3 | [docs.aws.amazon.com](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) |
-| Countdown.js | Countdown timer for interviews | [GitHub - hilios/jQuery.countdown](https://github.com/hilios/jQuery.countdown) |
-| Bootstrap | UI component library for layouts and styling | [getbootstrap.com](https://getbootstrap.com/) |
-| Tailwind CSS | Utility-first CSS framework for custom styling | [tailwindcss.com](https://tailwindcss.com/) |
+| Library/Tool  | Purpose                                          | Link                                                                                   |
+| ------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| React.js      | UI framework for building interactive interfaces | [reactjs.org](https://reactjs.org/)                                                    |
+| Quill         | Rich text editor for user input                  | [quilljs.com](https://quilljs.com/)                                                    |
+| Video.js      | HTML5 video player                               | [videojs.com](https://videojs.com/)                                                    |
+| AWS S3 JS SDK | Upload and retrieve videos from AWS S3           | [docs.aws.amazon.com](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) |
+| Countdown.js  | Countdown timer for interviews                   | [GitHub - hilios/jQuery.countdown](https://github.com/hilios/jQuery.countdown)         |
+| Bootstrap     | UI component library for layouts and styling     | [getbootstrap.com](https://getbootstrap.com/)                                          |
+| Tailwind CSS  | Utility-first CSS framework for custom styling   | [tailwindcss.com](https://tailwindcss.com/)                                            |
 
 ---
 
 ### 🧠 Back-End Dependencies
 
-| Library/Tool | Purpose | Link |
-|--------------|---------|------|
-| LlamaParse | Process PDF files | [llamaindex.ai/llamaparse](https://www.llamaindex.ai/llamaparse?gad_source=1&gad_campaignid=21116317807&gbraid=0AAAAA9du_J0CkmThGan_q1frhfR59JbAE&gclid=Cj0KCQjwyIPDBhDBARIsAHJyyVjUe6Zg1Wtgn6OlPtRq2REI2zOr368RSxqPsimjxi_sFbUiBKNWaWwaAr_AEALw_wcB) |
-| OpenAI API | Extract keywords and form questions | [platform.openai.com](https://platform.openai.com/docs/) |
-| spaCy | NLP toolkit in Python | [spacy.io](https://spacy.io/) |
-| LanguageTool | Grammar and style checking | [languagetool.org](https://languagetool.org/) |
-| Neo4j | Graph database for knowledge representation | [neo4j.com](https://neo4j.com/) |
-| Express.js | Minimal backend framework for Node.js | [expressjs.com](https://expressjs.com/) |
-| AWS Boto3 SDK | Python SDK for accessing AWS services (e.g., S3) | [boto3.amazonaws.com](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) |
-| FFmpeg | Video/audio processing for recordings | [ffmpeg.org](https://ffmpeg.org/) |
+| Library/Tool  | Purpose                                          | Link                                                                                                                                                                                                                                                  |
+| ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LlamaParse    | Process PDF files                                | [llamaindex.ai/llamaparse](https://www.llamaindex.ai/llamaparse?gad_source=1&gad_campaignid=21116317807&gbraid=0AAAAA9du_J0CkmThGan_q1frhfR59JbAE&gclid=Cj0KCQjwyIPDBhDBARIsAHJyyVjUe6Zg1Wtgn6OlPtRq2REI2zOr368RSxqPsimjxi_sFbUiBKNWaWwaAr_AEALw_wcB) |
+| OpenAI API    | Extract keywords and form questions              | [platform.openai.com](https://platform.openai.com/docs/)                                                                                                                                                                                              |
+| spaCy         | NLP toolkit in Python                            | [spacy.io](https://spacy.io/)                                                                                                                                                                                                                         |
+| LanguageTool  | Grammar and style checking                       | [languagetool.org](https://languagetool.org/)                                                                                                                                                                                                         |
+| Neo4j         | Graph database for knowledge representation      | [neo4j.com](https://neo4j.com/)                                                                                                                                                                                                                       |
+| Express.js    | Minimal backend framework for Node.js            | [expressjs.com](https://expressjs.com/)                                                                                                                                                                                                               |
+| AWS Boto3 SDK | Python SDK for accessing AWS services (e.g., S3) | [boto3.amazonaws.com](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)                                                                                                                                                             |
+| FFmpeg        | Video/audio processing for recordings            | [ffmpeg.org](https://ffmpeg.org/)                                                                                                                                                                                                                     |
 
 ---
 
 ### 🧰 Infrastructure & Data Storage
 
-| Library/Tool | Purpose | Link |
-|--------------|---------|------|
-| PostgreSQL | Relational database | [postgresql.org](https://www.postgresql.org/) |
-| MongoDB | NoSQL document database | [mongodb.com](https://www.mongodb.com/) |
+| Library/Tool | Purpose                 | Link                                          |
+| ------------ | ----------------------- | --------------------------------------------- |
+| PostgreSQL   | Relational database     | [postgresql.org](https://www.postgresql.org/) |
+| MongoDB      | NoSQL document database | [mongodb.com](https://www.mongodb.com/)       |
 
 ---
 
 ## Model and Engine
 
 ### Story Map
+
 ![](Story_Map.png)
 
-### Engine Architecture 
+### Engine Architecture
+
 ![](Engine_Architecture.png)
 **1. 🖥️ Frontend**
 
@@ -69,15 +72,16 @@ The OpenAI API is used to analyze the resume data and convert it into a structur
 
 **4. ⚙️ Multi-Agent**
 
-The multi-agent system coordinates various AI agents, each responsible for a specific task such as resume understanding, question generation, knowledge graph searching, and follow-up generation. Built using frameworks like LangChain, it is able to generate resume/position tailored interview questions and answers/explanations to the questions. 
+The multi-agent system coordinates various AI agents, each responsible for a specific task such as resume understanding, question generation, knowledge graph searching, and follow-up generation. Built using frameworks like LangChain, it is able to generate resume/position tailored interview questions and answers/explanations to the questions.
 
 **5. 🕸️ Knowledge Graph**
 
-The knowledge graph obtains information from uploaded files and stores all known questions, concepts, user profiles, and answers in a structured graph database like Neo4j. It enables relationship-based querying and helps the system maintain consistency. 
+The knowledge graph obtains information from uploaded files and stores all known questions, concepts, user profiles, and answers in a structured graph database like Neo4j. It enables relationship-based querying and helps the system maintain consistency.
 
 ---
 
 ## APIs and Controller
+
 **1. POST /upload-resume**
 
 It accepts users' resumes in PDF files and sends them to LlamaParse for structured content extraction. It returns JSON representation of the parsed resume.
@@ -143,16 +147,14 @@ Returns the final PDF plus a machine‑readable JSON companion.
 
 ## Team Roster
 
-| Member           |  Contribution<sup>†</sup> |
+| Member           | Contribution<sup>†</sup> |
 | ---------------- | ------------------------ |
-| **Zhitong Tang** |                           |
-| **Minjia Tang** |                         |
-| **Yile Sun** |                       |
-| **Zhenjie Sun** |                         |
-| **Houcheng Yu** |                         |
+| **Zhitong Tang** |                          |
+| **Minjia Tang**  |                          |
+| **Yile Sun**     |                          |
+| **Zhenjie Sun**  |                          |
+| **Houcheng Yu**  |                          |
 
 <sup>†</sup> Detailed contribution statements will be completed at project close‑out.
 
-
-*© 2025 GenView Team. Licensed under the MIT License.*
-
+_© 2025 GenView Team. Licensed under the MIT License._
