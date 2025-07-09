@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
+venv/
+ENV/
+env/
+.venv/
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.mo
+*.sqlite3
+db.sqlite3
+
+# Django migrations
+**/migrations/
+!**/migrations/__init__.py
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+
+# pytest
+.cache/
+.pytest_cache/
+
+# Node / frontend
+node_modules/
+frontend/build/
+frontend/dist/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+
+# PEP 582; used by python-in-the-browser environments like pyodide
+__pypackages__/
+
+# Environments
+.env
+.env.*
+
+# Local celery beat schedule file
+celerybeat-schedule
+
+# Static files
+staticfiles/
+static/
+
+# Media files
+media/
+
+# VS Code settings for Python
+.vscode/
+
+# pip-tools
+*.txt~ 
