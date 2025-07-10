@@ -11,11 +11,21 @@
 3. `source .venv/bin/activate`
 4. `python manage.py runserver`
 
+## Testing
+
+The testing configuration is under `pytest`.
+
+```bash
+cd Jobify/backend
+pytest
+```
+
 ## Django
 
 Local superuser: `hollins`, password: `123`
 
 ```shell
+# Migrate only when models have changed
 python manage.py makemigrations
 python manage.py migrate
 python manage.py runserver
