@@ -1,7 +1,7 @@
 [project]
 name = "jobify"
 version = "0.1.0"
-description = "Add your description here"
+description = "Jobify — AI-Powered Interview Coach"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -23,4 +23,14 @@ dependencies = [
     "requests==2.32.4",
     "sqlparse==0.5.3",
     "urllib3==2.5.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "jobify_backend.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+testpaths = ["backend"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
 ]
