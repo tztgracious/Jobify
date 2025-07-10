@@ -16,6 +16,21 @@
 
 All API endpoints are prefixed with `/api/v1` for versioning.
 
+## ✅ 🔗 API sync checklist
+
+| ✔️ What to check                    | ✅ Why it matters                                                                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📜 Up-to-date endpoint list         | Make sure all your mobile (or web) endpoints match what your Django backend exposes. (E.g. `/api/v1/signup/` expects POST with `{email, password}`.) |
+| 📊 Request/response schemas         | Data shape matters. If Django adds `first_name`, your Kotlin data class needs it.                                                                    |
+| 🪓 Error response format            | Always know: does your backend return `{ "error": "msg" }` or `{ "message": "error" }`? Parse it consistently.                                       |
+| 🔒 Auth strategy agreed             | If moving to JWT, you’ll start sending `Authorization: Bearer <token>` in headers. Confirm exact header name & format.                               |
+| 📦 Multipart/form-data file uploads | Know precisely how your backend parses `@Part MultipartBody.Part`. Does it expect `file`, `resume_file`, `upload`?                                   |
+| 🚦 HTTP status codes documented     | Does a failed login return `400`, `401`, or `404`? Your Kotlin UI will show different errors based on this.                                          |
+| 📝 Shared validation rules          | If Django requires password ≥ 8 chars, your Kotlin app should validate too — or at least display backend’s message.                                  |
+| 🔀 Versioning & future-proofing     | You’re on `/api/v1`. Make sure your app can easily switch to `/api/v2` later.                                                                        |
+| 📈 Logging & debug endpoints        | Use `/debug/` or logs for quick testing, so you can isolate frontend vs backend bugs.                                                                |
+| 🕰 Timeout & retry policies         | If your backend sometimes slow (like parsing a large resume), does your app handle 10-second waits gracefully?                                       |
+
 ## Authentication
 
 Currently, the API does not implement token-based authentication. Authentication is handled through basic login verification.
