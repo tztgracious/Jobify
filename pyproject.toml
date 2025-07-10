@@ -30,7 +30,6 @@ DJANGO_SETTINGS_MODULE = "jobify_backend.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 testpaths = ["backend"]
 addopts = [
-    "--verbose",
-    "--tb=short",
+    "--tb=no",
     "--strict-markers",
 ]
