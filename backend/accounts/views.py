@@ -1,6 +1,4 @@
-# Create your views here.
-from django.contrib.auth.hashers import check_password
-from django.shortcuts import get_object_or_404
+from django.contrib.auth import login, authenticate
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -24,7 +22,26 @@ def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
 
-    user = get_object_or_404(User, email=email)
-    if check_password(password, user.password):
-        return Response({"message": "Login successful"})
+    # Use the custom authentication backend
+    user = authenticate(request, email=email, password=password)
+    if user is not None:
+        login(request, user)
+        return Response({
+            "message": "Login successful",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "is_employer": user.is_employer
+            }
+        })
+
     return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def logout_view(request):
+    """Log out the current user"""
+    from django.contrib.auth import logout
+    logout(request)
+    return Response({"message": "Logged out successfully"})
