@@ -14,6 +14,17 @@ def get_keywords_using_openai(text):
     pass
 
 
-def parse_resume_with_llama(file):
-    # call LlamaParse API here
-    pass
+def get_file_size_mb(file_size_bytes):
+    """Convert bytes to MB for user display"""
+    return round(file_size_bytes / (1024 * 1024), 2)
+
+# TODO: get better error message. Rerun a Response object if invalid
+def check_file_size_with_message(file, max_size_mb=5):
+    """Check file size with user-friendly message"""
+    max_size_bytes = max_size_mb * 1024 * 1024
+
+    if file.size > max_size_bytes:
+        current_size = get_file_size_mb(file.size)
+        return False, f"File size ({current_size} MB) exceeds limit ({max_size_mb} MB)"
+
+    return True, None
