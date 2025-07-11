@@ -20,6 +20,10 @@ cd Jobify/backend
 pytest
 ```
 
+### Testing fixtures
+
+`tests/fixtures/generate_resume.py` generates realistic PDF resumes for various professions with random data.
+
 ## Django
 
 Local superuser: `hollins`, password: `123`
@@ -29,8 +33,19 @@ Local superuser: `hollins`, password: `123`
 python manage.py makemigrations
 python manage.py migrate
 python manage.py runserver
+
+sudo vi /etc/nginx/sites-available/jobify
+sudo ln -s /etc/nginx/sites-available/jobify /etc/nginx/sites-enabled
 ```
 
 ## TODOs
 
 - [ ] llama parse
+- [ ] add login verification and redirection
+- [ ] fix uv installation
+
+## Llama parse
+
+Read the [official python doc](https://docs.cloud.llamaindex.ai/llamaparse/getting_started?utm_source=chatgpt.com)
+
+We are doing sync fetching for the api. We should limit the pdf file size uploaded(5MB).
