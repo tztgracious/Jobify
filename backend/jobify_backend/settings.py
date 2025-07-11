@@ -74,13 +74,30 @@ WSGI_APPLICATION = 'jobify_backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+DB_ENGINE = os.getenv("DB_ENGINE", default="django.db.backends.sqlite3")
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DB_ENGINE == "django.db.backends.sqlite3":
+    # Fallback to SQLite
+    print("Falling back to SQLite")
+    DATABASES = {
+        'default': {
+            'ENGINE': "django.db.backends.sqlite3",
+            'NAME': BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    # Use PostgreSQL or another DB from .env
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': os.getenv("DB_NAME"),
+            'USER': os.getenv("DB_USER"),
+            'PASSWORD': os.getenv("DB_PASSWORD"),
+            'HOST': os.getenv("DB_HOST"),
+            'PORT': os.getenv("DB_PORT"),
+        }
+    }
+# print(f"Using database engine: {DB_ENGINE}")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -121,3 +138,16 @@ STATIC_ROOT = BASE_DIR / 'static'  # added line
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LLAMA_API_KEY = os.getenv("LLAMA_PARSE_API_KEY")
+LLAMA_API_URL = "https://api.cloud.llamaindex.ai/api/v1/parsing/upload"
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
+
+# Custom authentication backend
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.EmailBackend',
+]
+
+# REST Framework configuration
