@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/nav_channel_list">
+
+    <fragment
+        android:id="@+id/nav_chat"
+        android:name="com.chatwaifu.mobile.ui.chat.ChatFragment"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/nav_channel_list"
+        android:name="com.chatwaifu.mobile.ui.channellist.ChannelListFragment"
+        tools:layout="@layout/fragment_channel_list" />
+
+    <fragment
+        android:id="@+id/nav_setting"
+        android:name="com.chatwaifu.mobile.ui.setting.SettingFragment"
+        tools:layout="@layout/fragment_chat_log" />
+
+    <fragment
+        android:id="@+id/nav_chat_log"
+        android:name="com.chatwaifu.mobile.ui.chatlog.ChatLogFragment"
+        tools:layout="@layout/fragment_chat_log" />
+</navigation>
