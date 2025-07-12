@@ -1,357 +1,275 @@
-# Jobify Backend APIs
+# 🚀 Jobify Backend APIs
 
-## Quick Reference
+## 📂 Upload Resume
 
-| Endpoint                | Method | Description               |
-| ----------------------- | ------ | ------------------------- |
-| `/api/v1/signup/`       | POST   | Create new user account   |
-| `/api/v1/login/`        | POST   | Authenticate user         |
-| `/api/v1/parse-resume/` | POST   | Parse uploaded resume     |
-| `/api/v1/debug/`        | GET    | Debug endpoint (dev only) |
+### Description
 
-## Base URL
+Allows the user to upload a **resume PDF file** (less than 5MB).  
+The server generates a `doc_id` and validates the file type and size.
 
-- **Local Development**: `http://localhost:8000/api/v1`
-- **Production**: `http://115.29.170.231:8000/api/v1`
+### Endpoint
 
-All API endpoints are prefixed with `/api/v1` for versioning.
-
-## ✅ 🔗 API sync checklist
-
-| ✔️ What to check                    | ✅ Why it matters                                                                                                                                    |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 📜 Up-to-date endpoint list         | Make sure all your mobile (or web) endpoints match what your Django backend exposes. (E.g. `/api/v1/signup/` expects POST with `{email, password}`.) |
-| 📊 Request/response schemas         | Data shape matters. If Django adds `first_name`, your Kotlin data class needs it.                                                                    |
-| 🪓 Error response format            | Always know: does your backend return `{ "error": "msg" }` or `{ "message": "error" }`? Parse it consistently.                                       |
-| 🔒 Auth strategy agreed             | If moving to JWT, you’ll start sending `Authorization: Bearer <token>` in headers. Confirm exact header name & format.                               |
-| 📦 Multipart/form-data file uploads | Know precisely how your backend parses `@Part MultipartBody.Part`. Does it expect `file`, `resume_file`, `upload`?                                   |
-| 🚦 HTTP status codes documented     | Does a failed login return `400`, `401`, or `404`? Your Kotlin UI will show different errors based on this.                                          |
-| 📝 Shared validation rules          | If Django requires password ≥ 8 chars, your Kotlin app should validate too — or at least display backend’s message.                                  |
-| 🔀 Versioning & future-proofing     | You’re on `/api/v1`. Make sure your app can easily switch to `/api/v2` later.                                                                        |
-| 📈 Logging & debug endpoints        | Use `/debug/` or logs for quick testing, so you can isolate frontend vs backend bugs.                                                                |
-| 🕰 Timeout & retry policies         | If your backend sometimes slow (like parsing a large resume), does your app handle 10-second waits gracefully?                                       |
-
-## Authentication
-
-Currently, the API does not implement token-based authentication. Authentication is handled through basic login verification.
-
----
-
-## 🔐 Authentication Endpoints
-
-### 1. User Signup
-
-**POST** `/api/v1/signup/`
-
-Creates a new user account.
-
-#### Request Body
-
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123",
-  "full_name": "John Doe",
-  "is_employer": false
-}
+```text
+POST /api/v1/upload-resume/
 ```
 
-#### Curl Example
+### Request
+
+#### Content-Type
+
+```text
+multipart/form-data
+```
+
+#### Body Parameters
+
+| Field  | Type | Required | Description                                       |
+| ------ | ---- | -------- | ------------------------------------------------- |
+| `file` | file | ✅       | The resume PDF file to upload. Must be under 5MB. |
+
+### Example cURL
 
 ```bash
 curl -X POST \
-  http://localhost:8000/api/v1/signup/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "securepassword123",
-    "full_name": "John Doe",
-    "is_employer": false
-  }'
-```
-
-#### Response
-
-```json
-// Success (201 Created)
-{
-  "message": "User created"
-}
-
-// Error (400 Bad Request)
-{
-  "email": ["This field is required."],
-  "password": ["This field is required."]
-}
-```
-
-#### Request Fields
-
-| Field         | Type    | Required | Description                                       |
-| ------------- | ------- | -------- | ------------------------------------------------- |
-| `email`       | string  | ✅       | User's email address (must be unique)             |
-| `password`    | string  | ✅       | User's raw password (will be hashed)              |
-| `full_name`   | string  | ❌       | User's full name                                  |
-| `is_employer` | boolean | ❌       | Indicates if user is an employer (default: false) |
-
----
-
-### 2. User Login
-
-**POST** `/api/v1/login/`
-
-Authenticates a user with email and password.
-
-#### Request Body
-
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-#### Curl Example
-
-```bash
-curl -X POST \
-  http://localhost:8000/api/v1/login/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "securepassword123"
-  }'
-```
-
-#### Request Fields
-
-| Field      | Type   | Required | Description                             |
-| ---------- | ------ | -------- | --------------------------------------- |
-| `email`    | string | ✅       | User's email address for authentication |
-| `password` | string | ✅       | User's password for authentication      |
-
-#### Response
-
-```json
-// Success (200 OK)
-{
-  "message": "Login successful"
-}
-
-// Error (400 Bad Request)
-{
-  "error": "Invalid credentials"
-}
-
-// Error (404 Not Found)
-// Returns 404 if user with provided email doesn't exist
-```
-
----
-
-## 📄 Resume Processing Endpoints
-
-### 3. Parse Resume
-
-**POST** `/api/v1/parse-resume/`
-
-Parses uploaded resume files using LlamaIndex API.
-
-#### Request
-
-- **Content-Type**: `multipart/form-data`
-- **Body**: File upload
-
-#### Curl Example
-
-```bash
-curl -X POST \
-  http://localhost:8000/api/v1/parse-resume/ \
+  http://localhost:8000/api/v1/upload-resume/ \
   -F "file=@resume.pdf"
 ```
 
-#### Response
+### Response
+
+#### Success - `201 Created`
 
 ```json
-// Success (200 OK)
 {
-  "parsed": {
-    // LlamaIndex API response data
-    "text": "extracted text content",
-    "metadata": { ... }
-  }
-}
-
-// Error (400 Bad Request)
-{
-  "error": "No file uploaded"
-}
-
-// Error (502 Bad Gateway)
-{
-  "error": "Request failed with status 500"
+  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "valid_file": true,
+  "error_msg": null
 }
 ```
 
-#### Response Fields
+#### Validation failure - `400 Bad Request`
 
-| Field             | Type   | Description                                           |
-| ----------------- | ------ | ----------------------------------------------------- |
-| `parsed`          | object | LlamaIndex API response containing parsed resume data |
-| `parsed.text`     | string | Extracted text content from the resume                |
-| `parsed.metadata` | object | Additional metadata from the parsing process          |
-| `error`           | string | Error message when request fails                      |
+```json
+{
+  "doc_id": null,
+  "valid_file": false,
+  "error_msg": "File too big."
+}
+```
 
-#### Supported File Types
+or
 
-- PDF files
-- Other formats supported by LlamaIndex API
+```json
+{
+  "doc_id": null,
+  "valid_file": false,
+  "error_msg": "Not a PDF file."
+}
+```
 
 ---
 
-### 4. Debug Endpoint
+## 🔍 Get Resume Keywords
 
-**GET** `/api/v1/debug/`
+### Description
 
-Development endpoint for testing OpenAI and LanguageTool integrations.
+Fetches extracted **keywords** from the uploaded resume file identified by `doc_id`.
 
-⚠️ **Note**: This endpoint is only available when `DEBUG=True` in Django settings.
+### Endpoint
 
-#### Curl Example
+```text
+POST /api/v1/get-keywords/
+```
+
+### Request
+
+#### Content-Type
+
+```text
+multipart/form-data
+```
+
+#### Body Parameters
+
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+
+### Example cURL
 
 ```bash
-curl -X GET \
-  http://localhost:8000/api/v1/debug/
+curl -X POST \
+  http://localhost:8000/api/v1/get-keywords/ \
+  -F "doc_id=12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"
 ```
 
-#### Response
+### Response
 
-```json
-// Success (200 OK)
-{
-  "sample_text": "My name is Alice and I have 3 years experience in machine learning.",
-  "keywords": ["machine learning", "experience", "Alice"],
-  "grammar": {
-    // LanguageTool grammar check results
-  },
-  "KEYS": {
-    "LLAMA_PARSE_API_KEY": "sk-...",
-    "OPENAI_API_KEY": "sk-...",
-    "LANGUAGETOOL_API_KEY": "...",
-    "EXAMPLE_KEY": "..."
-  },
-  "DJANGO_SECRET_KEY": "..."
-}
-
-// Error (403 Forbidden)
-{
-  "error": "Debug endpoint disabled in production"
-}
-```
-
-#### Response Fields
-
-| Field               | Type   | Description                               |
-| ------------------- | ------ | ----------------------------------------- |
-| `sample_text`       | string | The input text being analyzed             |
-| `keywords`          | array  | Array of extracted keywords from the text |
-| `grammar`           | object | LanguageTool grammar check results        |
-| `KEYS`              | object | API keys configuration (for debugging)    |
-| `DJANGO_SECRET_KEY` | string | Django secret key (for debugging)         |
-
----
-
-## 📊 Data Models
-
-### User Model
+#### Success - `200 OK`
 
 ```json
 {
-  "id": 1,
-  "email": "user@example.com",
-  "password": "hashed_password",
-  "is_employer": false,
-  "full_name": "John Doe",
-  "created_at": "2025-07-10T10:30:00Z"
+  "finished": true,
+  "keywords": ["c++", "java"],
+  "error": ""
+}
+```
+
+#### Processing not finished - `200 OK`
+
+```json
+{
+  "finished": false,
+  "keywords": [],
+  "error": ""
+}
+```
+
+#### Error occurred - `500 Internal Server Error` or custom `502 Bad Gateway`
+
+```json
+{
+  "finished": false,
+  "keywords": [],
+  "error": "Server timed out."
 }
 ```
 
 ---
 
-## 🔧 Development Setup
+## 🎯 Select Target Job
 
-### Required Environment Variables
+### Description
 
-Create a `.api-keys` file in the project root:
+Saves the user’s **target job preferences** (title, location, expected salary, skills).
 
-```env
-LLAMA_PARSE_API_KEY=your_llama_api_key
-OPENAI_API_KEY=your_openai_api_key
-LANGUAGETOOL_API_KEY=your_languagetool_api_key
-DJANGO_SECRET_KEY=your_django_secret_key
+### Endpoint
+
+```text
+POST /api/v1/target-job/
 ```
 
-### Running the Server
+### Request
+
+#### Content-Type
+
+```text
+application/json
+```
+
+#### Body Parameters
+
+| Field          | Type             | Required | Description                                |
+| -------------- | ---------------- | -------- | ------------------------------------------ |
+| `title`        | string           | ✅       | Desired job title.                         |
+| `location`     | string           | ✅       | Preferred job location.                    |
+| `salary_range` | string           | ✅       | Expected salary range.                     |
+| `tags`         | array of strings | ✅       | Keywords/tags related to the desired role. |
+
+### Example cURL
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Run migrations
-python manage.py migrate
-
-# Start development server
-python manage.py runserver
+curl -X POST \
+  http://localhost:8000/api/v1/target-job/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Software Engineer",
+    "location": "Remote",
+    "salary_range": "80k-100k",
+    "tags": ["python", "django", "rest"]
+  }'
 ```
 
----
+### Response
 
-## 📝 Error Handling
-
-### Common HTTP Status Codes
-
-- `200 OK`: Request successful
-- `201 Created`: Resource created successfully
-- `400 Bad Request`: Invalid request data
-- `401 Unauthorized`: Authentication required
-- `403 Forbidden`: Permission denied
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Server error
-- `502 Bad Gateway`: External API error
-
-### Error Response Format
+#### Success - `201 Created`
 
 ```json
 {
-  "error": "Error message description"
+  "message": "Target job saved successfully"
 }
 ```
 
-For validation errors:
+#### Validation error - `400 Bad Request`
 
 ```json
 {
-  "field_name": ["Error message for this field"],
-  "another_field": ["Another error message"]
+  "error": "Missing required fields."
 }
 ```
 
----
+## 📝 Get Interview Questions
 
-## 🚀 Future Enhancements
+### Description
 
-### Planned Features
+Retrieves **auto-generated interview questions** based on the uploaded resume identified by `doc_id`.  
+The request can include `doc_id` and may accept more fields in the future.
 
-- [ ] JWT token-based authentication
-- [ ] User profile management endpoints
-- [ ] Job posting endpoints
-- [ ] Resume analysis and scoring
-- [ ] File upload validation and security
-- [ ] Rate limiting
-- [x] API versioning (v1 implemented)
+### Endpoint
 
----
+```text
+POST /api/v1/get-questions/
+```
 
-## 📞 Support
+### Request
 
-For API support and questions, contact the development team or refer to the project documentation.
+#### Content-Type
+
+```text
+application/json
+```
+
+#### Body Parameters
+
+| Field    | Type          | Required | Description                                                                     |
+| -------- | ------------- | -------- | ------------------------------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by `/upload-resume/`. Used to fetch associated questions. |
+
+> ⚠️ Note: Additional fields may be supported in future versions for customization (e.g., question difficulty, category).
+
+### Example cURL
+
+```bash
+curl -X POST \
+  http://localhost:8000/api/v1/get-questions/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"
+  }'
+```
+
+### Response
+
+#### Success - `200 OK`
+
+```json
+{
+  "finished": true,
+  "questions": [
+    "Tell me about a project where you used Python.",
+    "How do you manage deadlines when working remotely?",
+    "One more question."
+  ],
+  "error": null
+}
+```
+
+#### Still processing - `200 OK`
+
+```json
+{
+  "finished": false,
+  "questions": [],
+  "error": null
+}
+```
+
+#### Error occurred - `500 Internal Server Error`
+
+```json
+{
+  "finished": false,
+  "questions": [],
+  "error": "Server timed out."
+}
+```
