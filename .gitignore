@@ -21,6 +21,9 @@ env/
 *.sqlite3
 db.sqlite3
 
+# Django media uploads
+/media/
+
 # Django migrations
 **/migrations/
 !**/migrations/__init__.py
