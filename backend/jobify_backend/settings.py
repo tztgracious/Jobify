@@ -78,7 +78,6 @@ DB_ENGINE = os.getenv("DB_ENGINE", default="django.db.backends.sqlite3")
 
 if DB_ENGINE == "django.db.backends.sqlite3":
     # Fallback to SQLite
-    print("Falling back to SQLite")
     DATABASES = {
         'default': {
             'ENGINE': "django.db.backends.sqlite3",
@@ -150,4 +149,30 @@ AUTHENTICATION_BACKENDS = [
     'accounts.backends.EmailBackend',
 ]
 
-# REST Framework configuration
+# Media files (uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Django logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+            'level': 'DEBUG',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+}
+
