@@ -5,6 +5,7 @@ __pycache__/
 
 # api keys
 .api-keys
+*.crt
 
 # Virtualenv
 venv/
