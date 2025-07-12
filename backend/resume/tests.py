@@ -210,8 +210,23 @@ class UploadResumeTests(APITestCase):
         self.url = reverse('upload-resume')
         self.valid_pdf_content = b'%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n179\n%%EOF'
 
+    def tearDown(self):
+        # Clean up uploaded files after each test
+        from resume.models import Resume
+        import os
+        from django.conf import settings
+        
+        resumes = Resume.objects.all()
+        for resume in resumes:
+            file_path = os.path.join(settings.MEDIA_ROOT, resume.local_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        Resume.objects.all().delete()
+
     def test_upload_resume_success(self):
         """Test successful PDF upload"""
+        from resume.models import Resume
+        
         pdf_file = SimpleUploadedFile(
             "test_resume.pdf",
             self.valid_pdf_content,
@@ -224,6 +239,11 @@ class UploadResumeTests(APITestCase):
         self.assertIn('doc_id', response.data)
         self.assertTrue(response.data['valid_file'])
         self.assertIsNone(response.data['error_msg'])
+        
+        # Verify database record was created
+        doc_id = response.data['doc_id']
+        resume = Resume.objects.get(id=doc_id)
+        self.assertEqual(resume.local_path, f"resumes/{doc_id}.pdf")
 
     def test_upload_resume_no_file(self):
         """Test upload without providing a file"""
