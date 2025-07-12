@@ -32,7 +32,7 @@ Local superuser: `hollins`, password: `123`
 # Migrate only when models have changed
 python manage.py makemigrations
 python manage.py migrate
-python manage.py runserver
+python manage.py runserver > jobify.log 2>&1
 
 sudo vi /etc/nginx/sites-available/jobify
 sudo ln -s /etc/nginx/sites-available/jobify /etc/nginx/sites-enabled
