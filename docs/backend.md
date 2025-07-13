@@ -4,12 +4,12 @@
 
 - Login: `ssh root@115.29.170.231`
 
-## Start production(test run, unfinished lab1 setting)
+## Start production
 
 1. Copy the `.env` file to `/Jobify/`
-2. Set `DEBUG=False` in `backend/jobify_backend/settings.py`
+2. Set `DEBUG=False` in `.env`
 3. `source .venv/bin/activate`
-4. `python manage.py runserver`
+4. `sudo systemctl restart gunicorn`
 
 ## Testing
 
