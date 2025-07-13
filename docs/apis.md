@@ -282,23 +282,179 @@ POST /api/v1/logout/
 
 ---
 
-## ⚠️ Planned Endpoints (Not Yet Implemented)
+## 🎯 Target Job Selection
 
-The following endpoints are planned for future development but are **not currently available**:
+### Description
 
-### Target Job Selection
+Allows users to save their target job preferences for a specific resume. This information can be used to tailor interview questions and recommendations.
 
-- **Endpoint**: `POST /api/v1/target-job/`
-- **Purpose**: Save user's target job preferences
-- **Status**: Planned
+### Endpoint
+
+```text
+POST /api/v1/target-job/
+```
+
+### Request
+
+#### Content-Type
+
+```text
+application/json
+```
+
+or
+
+```text
+multipart/form-data
+```
+
+#### Body Parameters
+
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+| `title`  | string        | ✅       | The target job title (e.g., "Software Engineer").        |
+
+### Example cURL
+
+```bash
+curl -X POST \
+  http://localhost:8000/api/v1/target-job/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "title": "Software Engineer"
+  }'
+```
+
+### Response
+
+#### Success - `200 OK`
+
+```json
+{
+  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "message": "Target job saved successfully"
+}
+```
+
+#### Missing required fields - `400 Bad Request`
+
+```json
+{
+  "error": "Missing required fields"
+}
+```
+
+#### Resume not found - `404 Not Found`
+
+```json
+{
+  "error": "Resume not found"
+}
+```
+
+---
+
+## 🔄 Get Interview Questions (In Development)
+
+### Description
+
+Generates interview questions based on the uploaded resume and target job preferences. This endpoint analyzes the resume keywords and target job to create relevant interview questions.
+
+**⚠️ Note**: This endpoint is currently in development with a skeletal implementation. It returns placeholder questions and should not be used in production.
+
+### Endpoint
+
+```text
+POST /api/v1/get-questions/
+```
+
+### Request
+
+#### Content-Type
+
+```text
+application/json
+```
+
+or
+
+```text
+multipart/form-data
+```
+
+#### Body Parameters
+
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+
+### Example cURL
+
+```bash
+curl -X POST \
+  http://localhost:8000/api/v1/get-questions/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"
+  }'
+```
+
+### Response
+
+#### Success - `200 OK`
+
+```json
+{
+  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "interview_questions": [
+    "What are your strengths?",
+    "Why do you want to work here?",
+    "Describe a challenging situation you've faced."
+  ]
+}
+```
+
+#### Missing doc_id - `400 Bad Request`
+
+```json
+{
+  "error": "doc_id is required"
+}
+```
+
+#### Resume not found - `404 Not Found`
+
+```json
+{
+  "error": "Resume not found"
+}
+```
+
+### Development Status
+
+- ✅ Basic endpoint structure implemented
+- ✅ Request validation (doc_id required)
+- ✅ Resume existence check
+- ⚠️ Returns placeholder questions (not AI-generated)
+- ❌ Multi-agent AI question generation (planned)
+- ❌ Personalization based on keywords and target job (planned)
+
+---
+
+## ⚠️ Endpoints in Development
+
+The following endpoints are currently being developed but are **not yet fully functional**:
 
 ### Interview Questions
 
 - **Endpoint**: `POST /api/v1/get-questions/`
-- **Purpose**: Generate interview questions based on resume
-- **Status**: Planned
+- **Purpose**: Generate interview questions based on resume and target job
+- **Status**: In Development (Skeletal Implementation)
+- **Note**: Basic endpoint structure exists but functionality is not yet complete
 
-> **Important**: These endpoints will return `404 Not Found` if called.
+> **Important**: This endpoint currently returns placeholder responses and should not be used in production.
 
 ---
 
@@ -308,12 +464,12 @@ The following endpoints are planned for future development but are **not current
 
 - `POST /api/v1/upload-resume/` - Upload PDF resume
 - `POST /api/v1/get-keywords/` - Get extracted keywords
+- `POST /api/v1/target-job/` - Save target job preferences
 - `GET /api/v1/debug/` - Debug info (dev only)
 - `POST /api/v1/signup/` - User registration
 - `POST /api/v1/login/` - User authentication
 - `POST /api/v1/logout/` - User logout
 
-### Coming Soon:
+### In Development:
 
-- `POST /api/v1/target-job/` - Target job preferences
-- `POST /api/v1/get-questions/` - Interview questions
+- `POST /api/v1/get-questions/` - Interview questions (skeletal implementation)
