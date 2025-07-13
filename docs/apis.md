@@ -125,151 +125,195 @@ curl -X POST \
 }
 ```
 
-#### Error occurred - `500 Internal Server Error` or custom `502 Bad Gateway`
-
-```json
-{
-  "finished": false,
-  "keywords": [],
-  "error": "Server timed out."
-}
-```
-
----
-
-## 🎯 Select Target Job
-
-### Description
-
-Saves the user’s **target job preferences** (title, location, expected salary, skills).
-
-### Endpoint
-
-```text
-POST /api/v1/target-job/
-```
-
-### Request
-
-#### Content-Type
-
-```text
-application/json
-```
-
-#### Body Parameters
-
-| Field          | Type             | Required | Description                                |
-| -------------- | ---------------- | -------- | ------------------------------------------ |
-| `title`        | string           | ✅       | Desired job title.                         |
-| `location`     | string           | ✅       | Preferred job location.                    |
-| `salary_range` | string           | ✅       | Expected salary range.                     |
-| `tags`         | array of strings | ✅       | Keywords/tags related to the desired role. |
-
-### Example cURL
-
-```bash
-curl -X POST \
-  http://localhost:8000/api/v1/target-job/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Software Engineer",
-    "location": "Remote",
-    "salary_range": "80k-100k",
-    "tags": ["python", "django", "rest"]
-  }'
-```
-
-### Response
-
-#### Success - `201 Created`
-
-```json
-{
-  "message": "Target job saved successfully"
-}
-```
-
-#### Validation error - `400 Bad Request`
-
-```json
-{
-  "error": "Missing required fields."
-}
-```
-
-## 📝 Get Interview Questions
-
-### Description
-
-Retrieves **auto-generated interview questions** based on the uploaded resume identified by `doc_id`.  
-The request can include `doc_id` and may accept more fields in the future.
-
-### Endpoint
-
-```text
-POST /api/v1/get-questions/
-```
-
-### Request
-
-#### Content-Type
-
-```text
-application/json
-```
-
-#### Body Parameters
-
-| Field    | Type          | Required | Description                                                                     |
-| -------- | ------------- | -------- | ------------------------------------------------------------------------------- |
-| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by `/upload-resume/`. Used to fetch associated questions. |
-
-> ⚠️ Note: Additional fields may be supported in future versions for customization (e.g., question difficulty, category).
-
-### Example cURL
-
-```bash
-curl -X POST \
-  http://localhost:8000/api/v1/get-questions/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"
-  }'
-```
-
-### Response
-
-#### Success - `200 OK`
-
-```json
-{
-  "finished": true,
-  "questions": [
-    "Tell me about a project where you used Python.",
-    "How do you manage deadlines when working remotely?",
-    "One more question."
-  ],
-  "error": null
-}
-```
-
-#### Still processing - `200 OK`
-
-```json
-{
-  "finished": false,
-  "questions": [],
-  "error": null
-}
-```
-
 #### Error occurred - `500 Internal Server Error`
 
 ```json
 {
   "finished": false,
-  "questions": [],
-  "error": "Server timed out."
+  "keywords": [],
+  "error": "Resume processing failed. Trying again."
 }
 ```
+
+#### Resume not found - `404 Not Found`
+
+```json
+{
+  "finished": false,
+  "keywords": [],
+  "error": "Resume not found"
+}
+```
+
+#### Missing doc_id - `400 Bad Request`
+
+```json
+{
+  "finished": false,
+  "keywords": [],
+  "error": "doc_id is required"
+}
+```
+
+---
+
+## 🐛 Debug Endpoint (Development Only)
+
+### Description
+
+Returns debug information about the server configuration. **Only available when DEBUG=True**.
+
+### Endpoint
+
+```text
+GET /api/v1/debug/
+```
+
+### Request
+
+No parameters required.
+
+### Example cURL
+
+```bash
+curl -X GET http://localhost:8000/api/v1/debug/
+```
+
+### Response
+
+#### Success - `200 OK` (when DEBUG=True)
+
+```json
+{
+  "DEBUG": true,
+  "DATABASES": "sqlite3",
+  "KEYS": {
+    "OPENAI_API_KEY": "sk-..."
+  }
+}
+```
+
+#### Forbidden - `403 Forbidden` (when DEBUG=False)
+
+```json
+{
+  "error": "Debug endpoint disabled in production"
+}
+```
+
+---
+
+## 👤 Authentication APIs(NOT in use)
+
+### User Signup
+
+#### Endpoint
+
+```text
+POST /api/v1/signup/
+```
+
+#### Request Body
+
+```json
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "securepassword123",
+  "full_name": "Test User",
+  "is_employer": false
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "User created"
+}
+```
+
+### User Login
+
+#### Endpoint
+
+```text
+POST /api/v1/login/
+```
+
+#### Request Body
+
+```json
+{
+  "email": "test@example.com",
+  "password": "securepassword123"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "id": 1,
+    "email": "test@example.com",
+    "full_name": "Test User",
+    "is_employer": false
+  }
+}
+```
+
+### User Logout
+
+#### Endpoint
+
+```text
+POST /api/v1/logout/
+```
+
+#### Response
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+## ⚠️ Planned Endpoints (Not Yet Implemented)
+
+The following endpoints are planned for future development but are **not currently available**:
+
+### Target Job Selection
+
+- **Endpoint**: `POST /api/v1/target-job/`
+- **Purpose**: Save user's target job preferences
+- **Status**: Planned
+
+### Interview Questions
+
+- **Endpoint**: `POST /api/v1/get-questions/`
+- **Purpose**: Generate interview questions based on resume
+- **Status**: Planned
+
+> **Important**: These endpoints will return `404 Not Found` if called.
+
+---
+
+## API Summary
+
+### Currently Available:
+
+- `POST /api/v1/upload-resume/` - Upload PDF resume
+- `POST /api/v1/get-keywords/` - Get extracted keywords
+- `GET /api/v1/debug/` - Debug info (dev only)
+- `POST /api/v1/signup/` - User registration
+- `POST /api/v1/login/` - User authentication
+- `POST /api/v1/logout/` - User logout
+
+### Coming Soon:
+
+- `POST /api/v1/target-job/` - Target job preferences
+- `POST /api/v1/get-questions/` - Interview questions
