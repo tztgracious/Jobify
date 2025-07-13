@@ -125,23 +125,168 @@ curl -X POST \
 }
 ```
 
-#### Error occurred - `500 Internal Server Error` or custom `502 Bad Gateway`
+#### Error occurred - `500 Internal Server Error`
 
 ```json
 {
   "finished": false,
   "keywords": [],
-  "error": "Server timed out."
+  "error": "Resume processing failed. Trying again."
+}
+```
+
+#### Resume not found - `404 Not Found`
+
+```json
+{
+  "finished": false,
+  "keywords": [],
+  "error": "Resume not found"
+}
+```
+
+#### Missing doc_id - `400 Bad Request`
+
+```json
+{
+  "finished": false,
+  "keywords": [],
+  "error": "doc_id is required"
 }
 ```
 
 ---
 
-## 🎯 Select Target Job
+## 🐛 Debug Endpoint (Development Only)
 
 ### Description
 
-Saves the user’s **target job preferences** (title, location, expected salary, skills).
+Returns debug information about the server configuration. **Only available when DEBUG=True**.
+
+### Endpoint
+
+```text
+GET /api/v1/debug/
+```
+
+### Request
+
+No parameters required.
+
+### Example cURL
+
+```bash
+curl -X GET http://localhost:8000/api/v1/debug/
+```
+
+### Response
+
+#### Success - `200 OK` (when DEBUG=True)
+
+```json
+{
+  "DEBUG": true,
+  "DATABASES": "sqlite3",
+  "KEYS": {
+    "OPENAI_API_KEY": "sk-..."
+  }
+}
+```
+
+#### Forbidden - `403 Forbidden` (when DEBUG=False)
+
+```json
+{
+  "error": "Debug endpoint disabled in production"
+}
+```
+
+---
+
+## 👤 Authentication APIs(NOT in use)
+
+### User Signup
+
+#### Endpoint
+
+```text
+POST /api/v1/signup/
+```
+
+#### Request Body
+
+```json
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "securepassword123",
+  "full_name": "Test User",
+  "is_employer": false
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "User created"
+}
+```
+
+### User Login
+
+#### Endpoint
+
+```text
+POST /api/v1/login/
+```
+
+#### Request Body
+
+```json
+{
+  "email": "test@example.com",
+  "password": "securepassword123"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "id": 1,
+    "email": "test@example.com",
+    "full_name": "Test User",
+    "is_employer": false
+  }
+}
+```
+
+### User Logout
+
+#### Endpoint
+
+```text
+POST /api/v1/logout/
+```
+
+#### Response
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+## 🎯 Target Job Selection
+
+### Description
+
+Allows users to save their target job preferences for a specific resume. This information can be used to tailor interview questions and recommendations.
 
 ### Endpoint
 
@@ -157,14 +302,18 @@ POST /api/v1/target-job/
 application/json
 ```
 
+or
+
+```text
+multipart/form-data
+```
+
 #### Body Parameters
 
-| Field          | Type             | Required | Description                                |
-| -------------- | ---------------- | -------- | ------------------------------------------ |
-| `title`        | string           | ✅       | Desired job title.                         |
-| `location`     | string           | ✅       | Preferred job location.                    |
-| `salary_range` | string           | ✅       | Expected salary range.                     |
-| `tags`         | array of strings | ✅       | Keywords/tags related to the desired role. |
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+| `title`  | string        | ✅       | The target job title (e.g., "Software Engineer").        |
 
 ### Example cURL
 
@@ -173,37 +322,47 @@ curl -X POST \
   http://localhost:8000/api/v1/target-job/ \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Software Engineer",
-    "location": "Remote",
-    "salary_range": "80k-100k",
-    "tags": ["python", "django", "rest"]
+    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "title": "Software Engineer"
   }'
 ```
 
 ### Response
 
-#### Success - `201 Created`
+#### Success - `200 OK`
 
 ```json
 {
+  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
   "message": "Target job saved successfully"
 }
 ```
 
-#### Validation error - `400 Bad Request`
+#### Missing required fields - `400 Bad Request`
 
 ```json
 {
-  "error": "Missing required fields."
+  "error": "Missing required fields"
 }
 ```
 
-## 📝 Get Interview Questions
+#### Resume not found - `404 Not Found`
+
+```json
+{
+  "error": "Resume not found"
+}
+```
+
+---
+
+## 🔄 Get Interview Questions (In Development)
 
 ### Description
 
-Retrieves **auto-generated interview questions** based on the uploaded resume identified by `doc_id`.  
-The request can include `doc_id` and may accept more fields in the future.
+Generates interview questions based on the uploaded resume and target job preferences. This endpoint analyzes the resume keywords and target job to create relevant interview questions.
+
+**⚠️ Note**: This endpoint is currently in development with a skeletal implementation. It returns placeholder questions and should not be used in production.
 
 ### Endpoint
 
@@ -219,13 +378,17 @@ POST /api/v1/get-questions/
 application/json
 ```
 
+or
+
+```text
+multipart/form-data
+```
+
 #### Body Parameters
 
-| Field    | Type          | Required | Description                                                                     |
-| -------- | ------------- | -------- | ------------------------------------------------------------------------------- |
-| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by `/upload-resume/`. Used to fetch associated questions. |
-
-> ⚠️ Note: Additional fields may be supported in future versions for customization (e.g., question difficulty, category).
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
 
 ### Example cURL
 
@@ -244,32 +407,69 @@ curl -X POST \
 
 ```json
 {
-  "finished": true,
-  "questions": [
-    "Tell me about a project where you used Python.",
-    "How do you manage deadlines when working remotely?",
-    "One more question."
-  ],
-  "error": null
+  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "interview_questions": [
+    "What are your strengths?",
+    "Why do you want to work here?",
+    "Describe a challenging situation you've faced."
+  ]
 }
 ```
 
-#### Still processing - `200 OK`
+#### Missing doc_id - `400 Bad Request`
 
 ```json
 {
-  "finished": false,
-  "questions": [],
-  "error": null
+  "error": "doc_id is required"
 }
 ```
 
-#### Error occurred - `500 Internal Server Error`
+#### Resume not found - `404 Not Found`
 
 ```json
 {
-  "finished": false,
-  "questions": [],
-  "error": "Server timed out."
+  "error": "Resume not found"
 }
 ```
+
+### Development Status
+
+- ✅ Basic endpoint structure implemented
+- ✅ Request validation (doc_id required)
+- ✅ Resume existence check
+- ⚠️ Returns placeholder questions (not AI-generated)
+- ❌ Multi-agent AI question generation (planned)
+- ❌ Personalization based on keywords and target job (planned)
+
+---
+
+## ⚠️ Endpoints in Development
+
+The following endpoints are currently being developed but are **not yet fully functional**:
+
+### Interview Questions
+
+- **Endpoint**: `POST /api/v1/get-questions/`
+- **Purpose**: Generate interview questions based on resume and target job
+- **Status**: In Development (Skeletal Implementation)
+- **Note**: Basic endpoint structure exists but functionality is not yet complete
+
+> **Important**: This endpoint currently returns placeholder responses and should not be used in production.
+
+---
+
+## API Summary
+
+### Currently Available:
+
+- `POST /api/v1/upload-resume/` - Upload PDF resume
+- `POST /api/v1/get-keywords/` - Get extracted keywords
+- `POST /api/v1/target-job/` - Save target job preferences
+- `GET /api/v1/debug/` - Debug info (dev only)
+- `POST /api/v1/signup/` - User registration
+- `POST /api/v1/login/` - User authentication
+- `POST /api/v1/logout/` - User logout
+
+### In Development:
+
+- `POST /api/v1/get-questions/` - Interview questions (skeletal implementation)

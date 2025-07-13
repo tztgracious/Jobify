@@ -6,7 +6,7 @@
 
 ## Start production(test run, unfinished lab1 setting)
 
-1. Copy the `.api-keys` and `.env` files to `/Jobify/`
+1. Copy the `.env` file to `/Jobify/`
 2. Set `DEBUG=False` in `backend/jobify_backend/settings.py`
 3. `source .venv/bin/activate`
 4. `python manage.py runserver`
@@ -32,17 +32,16 @@ Local superuser: `hollins`, password: `123`
 # Migrate only when models have changed
 python manage.py makemigrations
 python manage.py migrate
-python manage.py runserver
-
-sudo vi /etc/nginx/sites-available/jobify
-sudo ln -s /etc/nginx/sites-available/jobify /etc/nginx/sites-enabled
+python manage.py runserver > jobify.log 2>&1
 ```
 
 ## TODOs
 
-- [ ] llama parse
-- [ ] add login verification and redirection
-- [ ] fix uv installation
+- [x] llama parse
+- [x] add login verification and redirection(deprecated)
+- [x] fix uv installation
+- [ ] interview questions
+- [ ] interview feedbacks
 
 ## Llama parse
 
