@@ -458,6 +458,38 @@ The following endpoints are currently being developed but are **not yet fully fu
 
 ---
 
+## 📋 TODO APIs (Planned)
+
+The following endpoints are planned for future development:
+
+### Submit Answer
+
+- **Endpoint**: `POST /api/v1/submit-answer/`
+- **Purpose**: Submit user's answer (text or video) to a specific interview question
+- **Description**: Stores the user's response and evaluates it using OpenAI API. Returns evaluation results and correct answers with explanations.
+- **Status**: TODO
+- **Features**:
+  - Accept text or video responses
+  - OpenAI-powered evaluation
+  - Detailed feedback and explanations
+  - Correct answer suggestions
+
+### Update Knowledge Graph
+
+- **Endpoint**: `POST /api/v1/update-knowledge-graph/`
+- **Purpose**: Add new nodes (concepts, questions, answers) to the Neo4j knowledge graph
+- **Description**: Manages the knowledge graph by adding new concepts, questions, and answers to improve the system's understanding and question generation.
+- **Status**: TODO
+- **Features**:
+  - Add concept nodes
+  - Link questions to concepts
+  - Store answer patterns
+  - Return update confirmation
+
+> **Note**: These endpoints are in the planning phase and will be implemented in future iterations.
+
+---
+
 ## API Summary
 
 ### Currently Available:
@@ -473,3 +505,8 @@ The following endpoints are currently being developed but are **not yet fully fu
 ### In Development:
 
 - `POST /api/v1/get-questions/` - Interview questions (skeletal implementation)
+
+### Planned (TODO):
+
+- `POST /api/v1/submit-answer/` - Submit and evaluate user answers
+- `POST /api/v1/update-knowledge-graph/` - Update Neo4j knowledge graph
