@@ -1,32 +1,17 @@
-import os
-import uuid
 import logging
+import os
+import threading
+import uuid
 
-import requests
 from django.conf import settings
-from django.http import JsonResponse
-from dotenv import load_dotenv
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
 
-from .utils import grammar_check, get_keywords_using_openai, check_file_size_with_message
 from .models import Resume
-from accounts.decorators import deprecated_api
+from .utils import check_file_size_with_message, parse_resume, get_resume_by_doc_id
 
 logger = logging.getLogger(__name__)
-
-
-def get_resume_by_doc_id(doc_id):
-    """
-    Helper function to retrieve a resume by its doc_id.
-    Returns the Resume object or None if not found.
-    """
-    try:
-        return Resume.objects.get(id=doc_id)
-    except Resume.DoesNotExist:
-        return None
 
 
 @api_view(['POST'])
@@ -83,17 +68,18 @@ def upload_resume(request):
             "valid_file": False,
             "error_msg": f"Failed to save file: {str(e)}"
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     # Store file metadata in database
-    relative_path = f"resumes/{filename}"
+    # relative_path = f"resumes/{filename}"
     resume = Resume.objects.create(
         id=doc_id,
-        local_path=relative_path
+        local_path=save_path
     )
 
     # Log successful upload
     logger.info(f"Resume uploaded successfully: doc_id={doc_id}, filename={filename}, file_size={file.size} bytes")
-
+    print(f"filepath: {save_path}")
+    threading.Thread(target=parse_resume, args=(resume.id,)).start()
     return Response({
         "doc_id": doc_id,
         "valid_file": True,
@@ -101,38 +87,117 @@ def upload_resume(request):
     }, status=status.HTTP_201_CREATED)
 
 
-@api_view(['GET'])
-def debug_view(request):
-    if not settings.DEBUG:
-        return JsonResponse({"error": "Debug endpoint disabled in production"}, status=403)
+@api_view(['POST'])
+def get_keywords(request):
+    """
+    Retrieve keywords for a given doc_id from multipart form data.
+    Returns processing status and keywords according to API specification.
+    """
+    doc_id = request.data.get('doc_id')
+    if not doc_id:
+        logger.warning("get_keywords called without doc_id")
+        return Response({
+            "finished": False,
+            "keywords": [],
+            "error": "doc_id is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-    sample_text = "My name is Alice and I have 3 years experience in machine learning."
+    resume = get_resume_by_doc_id(doc_id)
+    if not resume:
+        logger.warning(f"Keywords requested for non-existent doc_id: {doc_id}")
+        return Response({
+            "finished": False,
+            "keywords": [],
+            "error": "Resume not found"
+        }, status=status.HTTP_404_NOT_FOUND)
 
-    # run your functions
-    keywords = get_keywords_using_openai(sample_text)
-    grammar_result = grammar_check(sample_text)
-    logger.debug("This is a debug message")
-    logger.info("This is an info message")
-    logger.warning("This is a warning")
-    logger.error("This is an error")
-    return JsonResponse({
-        "DEBUG": settings.DEBUG,
-        "DATABASES": settings.DB_ENGINE,
-        "KEYS": {
-            "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-            "LANGUAGETOOL_API_KEY": os.getenv("LANGUAGETOOL_API_KEY"),
-            "EXAMPLE_KEY": os.getenv("EXAMPLE_KEY")
-        },
-    }, status=HTTP_200_OK)
+    # Check processing status
+    if resume.status == Resume.Status.FAILED:
+        logger.error(f"Resume processing failed for doc_id: {doc_id}, restarted")
+        threading.Thread(target=parse_resume, args=(resume.id,)).start()
+        return Response({
+            "finished": False,
+            "keywords": [],
+            "error": "Resume processing failed. Trying again."
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    elif resume.status == Resume.Status.PROCESSING:
+        return Response({
+            "finished": False,
+            "keywords": [],
+            "error": ""
+        }, status=status.HTTP_200_OK)
+    elif resume.status == Resume.Status.COMPLETE:
+        return Response({
+            "finished": True,
+            "keywords": resume.keywords or [],
+            "error": ""
+        }, status=status.HTTP_200_OK)
+
+    # Unknown status
+    return Response({
+        "finished": False,
+        "keywords": [],
+        "error": "Unknown resume status"
+    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
-@deprecated_api(
-    message="The parse-resume endpoint is deprecated",
-    new_endpoint="/api/v1/upload-resume/"
-)
-def parse_resume(request):
+def target_job(request):
     """
-    DEPRECATED: This endpoint is deprecated. Use /api/v1/upload-resume/ instead.
+    Save user's target job preferences.
+    Accepts JSON data with title, location, salary_range, and tags.
     """
-    pass  # The decorator handles the response
+    # Extract data from request
+    doc_id = request.data.get('doc_id')
+    title = request.data.get('title')
+    # location = request.data.get('location')
+    # salary_range = request.data.get('salary_range')
+    # tags = request.data.get('tags', [])
+
+    # Validate required fields
+    if not doc_id or not title or not title.strip():
+        logger.warning(f"Target job called without required fields")
+        return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+
+    resume = get_resume_by_doc_id(doc_id)
+    if not resume:
+        logger.warning(f"Target job requested for non-existent doc_id: {doc_id}")
+        return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
+    resume.target_job = title
+    resume.save()
+    return Response({
+        "doc_id": doc_id,
+        "message": "Target job saved successfully"
+    })
+
+
+@api_view(['POST'])
+def get_interview_questions(request):
+    """
+    Retrieve interview questions for a given doc_id.
+    """
+    doc_id = request.data.get('doc_id')
+    if not doc_id:
+        logger.warning("get_interview_questions called without doc_id")
+        return Response({"error": "doc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    resume = get_resume_by_doc_id(doc_id)
+    if not resume:
+        logger.warning(f"Interview questions requested for non-existent doc_id: {doc_id}")
+        return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    target_job: str = resume.target_job
+    keywords: list[str] = resume.keywords or []
+
+    # Simulate fetching interview questions
+    # TODO: use multi-agent models to get the questions
+    interview_questions = [
+        "What are your strengths?",
+        "Why do you want to work here?",
+        "Describe a challenging situation you've faced."
+    ]
+
+    return Response({
+        "doc_id": doc_id,
+        "interview_questions": interview_questions
+    })
