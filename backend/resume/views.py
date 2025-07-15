@@ -11,8 +11,27 @@ from rest_framework.response import Response
 from .models import Resume
 from .utils import check_file_size_with_message, parse_resume, get_resume_by_doc_id
 
+import requests
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
 logger = logging.getLogger(__name__)
 
+
+FASTAPI_URL = "http://localhost:8000/search/global"  # 可切换为 /search/local 等接口
+
+@csrf_exempt
+def ask_graphrag(request):
+    query = request.GET.get("query")
+    if not query:
+        return JsonResponse({"error": "Missing query"}, status=400)
+
+    try:
+        response = requests.get(FASTAPI_URL, params={"query": query})
+        response.raise_for_status()
+        return JsonResponse(response.json())
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 @api_view(['POST'])
 def upload_resume(request):
