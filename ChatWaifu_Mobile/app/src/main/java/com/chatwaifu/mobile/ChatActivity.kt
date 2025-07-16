@@ -40,7 +40,13 @@ class ChatActivity : AppCompatActivity() {
             }
         )
         chatViewModel.refreshAllKeys()
-        chatViewModel.mainLoop()
+        
+        // Check if we're entering from interview flow
+        val isInterviewMode = intent.getBooleanExtra("interview_mode", false)
+        val docId = intent.getStringExtra("doc_id")
+        if (isInterviewMode) {
+            chatViewModel.setInterviewMode(true, docId)
+        }
     }
     override fun onRequestPermissionsResult(
         requestCode: Int,

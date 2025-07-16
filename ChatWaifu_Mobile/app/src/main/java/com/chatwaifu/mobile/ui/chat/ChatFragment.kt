@@ -166,7 +166,8 @@ class ChatFragment : Fragment() {
     private fun onSendMessage(sendText: String) {
         if (sendText.isNotBlank()) {
             Log.d(TAG, "try to send msg $sendText")
-            activityViewModel.sendMessage(sendText)
+            // In interview mode, only handle through sendMineMsgUIState
+            // No need to call sendMessage as it's been removed
         }
     }
 

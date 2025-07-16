@@ -1,63 +1,165 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:flexbox="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="@android:color/white">
+    android:background="@drawable/welcome_gradient_background">
 
-    <!-- 新增标题 -->
-    <TextView
-        android:id="@+id/tvTitle"
+    <!-- 顶部统计卡片 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardTip"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Extracted Keywords"
-        android:textColor="@color/purple_500"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginBottom="24dp"/>
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/primary_blue_light"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- 关键词列表 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvKeywords"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="20dp"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_analytics"
+                android:tint="@color/primary_blue"
+                android:layout_marginEnd="16dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/keywords_count"
+                android:textColor="@color/primary_blue"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 关键词Flow布局，放在统计卡片和期望职位卡片之间 -->
+    <com.google.android.flexbox.FlexboxLayout
+        android:id="@+id/flexKeywords"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        flexbox:flexWrap="wrap"
+        flexbox:justifyContent="flex_start"
+        flexbox:alignItems="flex_start"
+        app:layout_constraintTop_toBottomOf="@id/cardTip"
+        app:layout_constraintBottom_toTopOf="@id/cardDesiredJob"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- 期望职位提示卡片 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardDesiredJob"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:padding="8dp"/>
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/primary_blue_light"
+        app:layout_constraintTop_toBottomOf="@id/flexKeywords"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="20dp"
+            android:gravity="center_vertical">
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_work"
+                android:tint="@color/primary_blue"
+                android:layout_marginEnd="16dp"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Your desired job"
+                android:textColor="@color/primary_blue"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
-    <!-- 底部按钮组 -->
+    <!-- 期望职位输入框 -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilDesiredJob"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginTop="20dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxBackgroundMode="outline"
+        app:boxCornerRadiusTopStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxBackgroundColor="@android:color/transparent"
+        app:layout_constraintTop_toBottomOf="@id/cardDesiredJob"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDesiredJob"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:hint="e.g. Software Engineer"
+            android:textColor="@color/primary_blue"
+            android:textColorHint="@color/primary_blue"
+            android:inputType="textPersonName"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- 底部按钮 -->
     <LinearLayout
+        android:id="@+id/bottomButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="16dp">
+        android:gravity="center"
+        android:layout_marginBottom="32dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBack"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:text="Back"
-            android:textColor="@color/purple_500"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:layout_marginEnd="16dp"
+            android:text="@string/back"
+            android:textColor="@color/text_secondary"
+            app:backgroundTint="@color/gray_200"
+            app:cornerRadius="24dp"/>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1"/>
-
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnNext"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="Next"
-            android:textColor="@android:color/white"
-            android:backgroundTint="@color/purple_500"
-            style="@style/Widget.AppCompat.Button.Colored"/>
+            android:text="@string/next"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/primary_blue"
+            app:cornerRadius="24dp"/>
+
     </LinearLayout>
-</LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -31,16 +31,21 @@
             android:exported="false" />
         <activity
             android:name=".ui.resume.UploadResumeActivity"
-            android:exported="false" /> <!-- New WelcomeActivity as main entry -->
+            android:exported="false" />
+        <activity
+            android:name=".ui.targetjob.TargetJobActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.questions.InterviewQuestionsActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.welcome.WelcomeActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- Kept ChatActivity but no longer the main entry -->
+        </activity>
         <activity
             android:name=".ChatActivity"
             android:exported="true"
