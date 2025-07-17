@@ -33,12 +33,14 @@ class Colors:
     NC = '\033[0m'  # No Color
 
 class APITester:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, save_response: bool = False):
         self.base_url = base_url
         self.total_tests = 0
         self.passed_tests = 0
         self.failed_tests = 0
         self.doc_id = None
+        self.save_response_flag = save_response
+        self.failed_test_names = []  # Track names of failed tests
         
     def print_header(self, test_name: str):
         print(f"\n{Colors.BLUE}{'='*50}{Colors.NC}")
@@ -83,11 +85,20 @@ class APITester:
         else:
             print(f"{Colors.RED}❌ FAIL: {test_name} (Expected: {expected_status}, Got: {actual_status}){Colors.NC}")
             self.failed_tests += 1
+            self.failed_test_names.append(test_name)
             
         if response_data:
             print(f"{Colors.YELLOW}📄 Response: {json.dumps(response_data, indent=2)[:200]}{'...' if len(str(response_data)) > 200 else ''}{Colors.NC}")
             
+    def mark_test_failed(self, test_name: str):
+        """Mark a test as failed due to exception"""
+        self.failed_tests += 1
+        self.failed_test_names.append(f"{test_name} (Exception)")
+            
     def save_response(self, endpoint: str, response_data: Dict):
+        if not self.save_response_flag:
+            return
+            
         filename = f"response_{endpoint.replace('/', '_').replace('-', '_')}.json"
         with open(filename, 'w') as f:
             json.dump(response_data, f, indent=2)
@@ -158,7 +169,7 @@ startxref
             return data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("GET /api/v1/debug/")
             return {}
 
     def test_upload_resume_no_file(self):
@@ -172,7 +183,7 @@ startxref
             return data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/upload-resume/ (no file)")
             return {}
             
     def test_upload_resume_invalid_file(self):
@@ -196,7 +207,7 @@ startxref
             return data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/upload-resume/ (invalid file)")
             return {}
             
     def test_upload_resume_success(self, pdf_path: str):
@@ -211,7 +222,6 @@ startxref
                 
             data = self.parse_response(response)
             self.check_result(201, response.status_code, "POST /api/v1/upload-resume/ (valid PDF)", data)
-            print(data)
             # Extract doc_id for later tests
             if 'doc_id' in data:
                 self.doc_id = data['doc_id']
@@ -221,7 +231,7 @@ startxref
             return data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/upload-resume/ (valid PDF)")
             return {}
             
     def test_get_keywords_valid(self):
@@ -232,15 +242,49 @@ startxref
             
         self.print_header("Get Keywords - Valid doc_id")
         try:
-            data = {'doc_id': self.doc_id}
-            response = requests.post(f"{self.base_url}/api/v1/get-keywords/", data=data, verify=VERIFY_SSL)
-            response_data = self.parse_response(response)
+            import time
+            max_retries = 10  # Maximum number of retries
+            retry_delay = 3   # Wait 3 seconds between retries
+            
+            for attempt in range(max_retries):
+                data = {'doc_id': self.doc_id}
+                response = requests.post(f"{self.base_url}/api/v1/get-keywords/", data=data, verify=VERIFY_SSL)
+                response_data = self.parse_response(response)
+                
+                # Check if processing is still in progress
+                if (response.status_code == 200 and 
+                    response_data.get('finished') == False and 
+                    response_data.get('error') == ""):
+                    
+                    print(f"{Colors.YELLOW}⏳ Processing... (Attempt {attempt + 1}/{max_retries}){Colors.NC}")
+                    if attempt < max_retries - 1:  # Don't sleep on the last attempt
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"{Colors.YELLOW}⚠️  Processing still not complete after {max_retries} attempts{Colors.NC}")
+                        break
+                else:
+                    # Processing complete or error occurred
+                    break
+            
             self.check_result(200, response.status_code, "POST /api/v1/get-keywords/ (valid doc_id)", response_data)
+            
+            # Show processing result
+            if response_data.get('finished') == True:
+                keywords = response_data.get('keywords', [])
+                print(f"{Colors.GREEN}✅ Processing complete! Found {len(keywords)} keywords{Colors.NC}")
+                if keywords:
+                    print(f"{Colors.YELLOW}📋 Keywords: {', '.join(keywords)}{Colors.NC}")
+            elif response_data.get('error'):
+                print(f"{Colors.RED}❌ Processing error: {response_data.get('error')}{Colors.NC}")
+            else:
+                print(f"{Colors.YELLOW}⚠️  Processing still in progress{Colors.NC}")
+            
             self.save_response("get_keywords_valid", response_data)
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/get-keywords/ (valid doc_id)")
             return {}
             
     def test_get_keywords_no_doc_id(self):
@@ -254,7 +298,7 @@ startxref
             return data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/get-keywords/ (no doc_id)")
             return {}
             
     def test_get_keywords_invalid_doc_id(self):
@@ -269,7 +313,7 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/get-keywords/ (invalid doc_id)")
             return {}
             
     def test_target_job_valid(self):
@@ -291,7 +335,7 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/target-job/ (valid data)")
             return {}
             
     def test_target_job_missing_fields(self):
@@ -306,7 +350,7 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/target-job/ (missing doc_id)")
             return {}
             
     def test_get_questions_valid(self):
@@ -325,7 +369,7 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/get-questions/ (valid doc_id)")
             return {}
             
     def test_get_questions_missing_doc_id(self):
@@ -339,7 +383,7 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/get-questions/ (missing doc_id)")
             return {}
             
     def test_signup(self):
@@ -366,7 +410,7 @@ startxref
                 return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.failed_tests += 1
+            self.mark_test_failed("POST /api/v1/signup/ (new user)")
             return {}
             
     def run_all_tests(self):
@@ -422,14 +466,23 @@ startxref
         print(f"{Colors.RED}❌ Failed: {self.failed_tests}{Colors.NC}")
         print(f"{Colors.BLUE}📋 Total:  {self.total_tests}{Colors.NC}")
         
+        # Show failed tests if any
+        if self.failed_test_names:
+            print(f"\n{Colors.RED}❌ FAILED TESTS:{Colors.NC}")
+            for i, test_name in enumerate(self.failed_test_names, 1):
+                print(f"{Colors.RED}  {i}. {test_name}{Colors.NC}")
+        
         if self.failed_tests == 0:
             print(f"\n{Colors.GREEN}🎉 All tests passed!{Colors.NC}")
             return 0
         else:
-            print(f"\n{Colors.RED}⚠️  Some tests failed. Check the responses above.{Colors.NC}")
+            print(f"\n{Colors.RED}⚠️  {self.failed_tests} test(s) failed. See details above.{Colors.NC}")
             return 1
 
 if __name__ == "__main__":
-    tester = APITester(BASE_URL)
+    # Configuration options
+    SAVE_RESPONSES = False  # Set to True to save all responses as JSON files
+    
+    tester = APITester(BASE_URL, save_response=SAVE_RESPONSES)
     exit_code = tester.run_all_tests()
     sys.exit(exit_code)
