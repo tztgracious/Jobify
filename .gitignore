@@ -23,6 +23,7 @@ env/
 *.mo
 *.sqlite3
 db.sqlite3
+/logs
 
 # Django media uploads
 /media/

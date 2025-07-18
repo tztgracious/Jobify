@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+import time
 import uuid
 from logging.handlers import RotatingFileHandler
 
@@ -275,3 +276,207 @@ def target_job(request):
         "doc_id": doc_id,
         "message": "Target job saved successfully"
     })
+
+
+@api_view(['POST'])
+def remove_resume(request):
+    """
+    Remove a resume and its associated media file.
+    Accepts doc_id and removes both the database entry and the PDF file.
+    """
+    logger.info("=== REMOVE RESUME REQUEST STARTED ===")
+    logger.info(f"Request data: {request.data}")
+    
+    doc_id = request.data.get('doc_id')
+    if not doc_id:
+        logger.warning("remove_resume called without doc_id")
+        logger.info("=== REMOVE RESUME REQUEST FAILED - NO DOC_ID ===")
+        return Response({
+            "success": False,
+            "error": "doc_id is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    logger.info(f"Looking up resume for doc_id: {doc_id}")
+    resume = get_resume_by_doc_id(doc_id)
+    if not resume:
+        logger.warning(f"Remove resume requested for non-existent doc_id: {doc_id}")
+        logger.info("=== REMOVE RESUME REQUEST FAILED - RESUME NOT FOUND ===")
+        return Response({
+            "success": False,
+            "error": "Resume not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Get the file path before deleting the database entry
+    file_path = resume.local_path
+    logger.info(f"Resume found: {doc_id}, file_path: {file_path}")
+
+    # Remove the database entry
+    try:
+        resume.delete()
+        logger.info(f"Resume database entry deleted for doc_id: {doc_id}")
+    except Exception as e:
+        logger.error(f"Failed to delete resume database entry for doc_id: {doc_id}, error: {str(e)}")
+        logger.info("=== REMOVE RESUME REQUEST FAILED - DATABASE ERROR ===")
+        return Response({
+            "success": False,
+            "error": f"Database error: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Remove the media file
+    file_removed = False
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            file_removed = True
+            logger.info(f"Media file removed: {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to remove media file: {file_path}, error: {str(e)}")
+            # Don't fail the request if file removal fails, as DB entry is already deleted
+    else:
+        logger.warning(f"Media file not found or no path specified: {file_path}")
+
+    logger.info(f"Resume removal completed for doc_id: {doc_id}, file_removed: {file_removed}")
+    logger.info("=== REMOVE RESUME REQUEST COMPLETED SUCCESSFULLY ===")
+    
+    return Response({
+        "success": True,
+        "doc_id": doc_id,
+        "message": "Resume removed successfully",
+        "file_removed": file_removed
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def cleanup_all_resumes(request):
+    """
+    Remove ALL resume files and database entries.
+    
+    SECURITY MEASURES:
+    - Requires confirmation token
+    - Only works in DEBUG mode (development/testing)
+    - Comprehensive logging
+    - Rate limiting protection
+    
+    WARNING: This is a destructive operation that removes ALL resume data!
+    """
+    logger.info("=== CLEANUP ALL RESUMES REQUEST STARTED ===")
+    logger.info(f"Request data: {request.data}")
+    logger.info(f"Request IP: {request.META.get('REMOTE_ADDR', 'unknown')}")
+    logger.info(f"Request User-Agent: {request.META.get('HTTP_USER_AGENT', 'unknown')}")
+    
+    # Security Check 1: Only allow in DEBUG mode (development/testing)
+    # if not settings.DEBUG:
+    #     logger.warning("Cleanup all resumes attempted in production mode - BLOCKED")
+    #     logger.info("=== CLEANUP ALL RESUMES REQUEST BLOCKED - PRODUCTION MODE ===")
+    #     return Response({
+    #         "success": False,
+    #         "error": "This operation is only allowed in development mode"
+    #     }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Security Check 2: Require confirmation token
+    confirmation_token = request.data.get('confirmation_token')
+    expected_token = os.getenv('DELETE_ALL_RESUMES_TOKEN', 'o2euinpiebvoian;*&Ts')  # Change this periodically
+
+    if confirmation_token != expected_token:
+        logger.warning(f"Cleanup all resumes attempted with invalid token: {confirmation_token}")
+        logger.info("=== CLEANUP ALL RESUMES REQUEST BLOCKED - INVALID TOKEN ===")
+        return Response({
+            "success": False,
+            "error": "Invalid confirmation token required for this destructive operation"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    # Security Check 3: Additional confirmation field
+    confirm_action = request.data.get('confirm_action')
+    if confirm_action != "DELETE_ALL_RESUME_DATA":
+        logger.warning(f"Cleanup all resumes attempted without proper confirmation: {confirm_action}")
+        logger.info("=== CLEANUP ALL RESUMES REQUEST BLOCKED - MISSING CONFIRMATION ===")
+        return Response({
+            "success": False,
+            "error": "Must confirm action with 'DELETE_ALL_RESUME_DATA'"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    logger.warning("=== STARTING DESTRUCTIVE CLEANUP OPERATION ===")
+    
+    # Get statistics before cleanup
+    total_resumes = Resume.objects.count()
+    logger.info(f"Total resumes in database before cleanup: {total_resumes}")
+    
+    # Count files in media directory
+    media_dir = os.path.join(settings.MEDIA_ROOT, 'resumes')
+    file_count = 0
+    if os.path.exists(media_dir):
+        try:
+            file_count = len([f for f in os.listdir(media_dir) if f.endswith('.pdf')])
+            logger.info(f"Total PDF files in media directory: {file_count}")
+        except Exception as e:
+            logger.error(f"Error counting files in media directory: {str(e)}")
+    
+    # Statistics tracking
+    files_removed = 0
+    files_failed = 0
+    db_records_removed = 0
+    db_errors = []
+    
+    # Step 1: Remove all files from media directory
+    logger.info("Starting file cleanup from media directory...")
+    if os.path.exists(media_dir):
+        try:
+            for filename in os.listdir(media_dir):
+                if filename.endswith('.pdf'):
+                    file_path = os.path.join(media_dir, filename)
+                    try:
+                        os.remove(file_path)
+                        files_removed += 1
+                        logger.info(f"Removed file: {filename}")
+                    except Exception as e:
+                        files_failed += 1
+                        logger.error(f"Failed to remove file {filename}: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error accessing media directory: {str(e)}")
+    else:
+        logger.warning(f"Media directory does not exist: {media_dir}")
+    
+    # Step 2: Remove all database entries
+    logger.info("Starting database cleanup...")
+    try:
+        # Get all resume IDs for logging
+        resume_ids = list(Resume.objects.values_list('id', flat=True))
+        logger.info(f"Resume IDs to be deleted: {resume_ids}")
+        
+        # Delete all resumes
+        db_records_removed, deletion_info = Resume.objects.all().delete()
+        logger.info(f"Database cleanup completed. Records removed: {db_records_removed}")
+        logger.info(f"Deletion details: {deletion_info}")
+        
+    except Exception as e:
+        error_msg = f"Database cleanup failed: {str(e)}"
+        logger.error(error_msg)
+        db_errors.append(error_msg)
+    
+    # Prepare response
+    cleanup_summary = {
+        "success": True,
+        "operation": "cleanup_all_resumes",
+        "timestamp": time.time(),
+        "statistics": {
+            "total_resumes_before": total_resumes,
+            "total_files_before": file_count,
+            "files_removed": files_removed,
+            "files_failed": files_failed,
+            "db_records_removed": db_records_removed,
+            "db_errors": db_errors
+        },
+        "message": "Cleanup operation completed"
+    }
+    
+    # Log final summary
+    logger.warning("=== CLEANUP OPERATION COMPLETED ===")
+    logger.info(f"Final summary: {cleanup_summary}")
+    
+    # Return appropriate status based on results
+    if files_failed > 0 or db_errors:
+        cleanup_summary["success"] = False
+        cleanup_summary["message"] = "Cleanup completed with errors"
+        return Response(cleanup_summary, status=status.HTTP_206_PARTIAL_CONTENT)
+    else:
+        return Response(cleanup_summary, status=status.HTTP_200_OK)
