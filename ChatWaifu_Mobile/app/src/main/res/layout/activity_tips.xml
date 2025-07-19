@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/welcome_gradient_background">
+
+    <TextView
+        android:id="@+id/tvTipsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Interview Tips"
+        android:textColor="@color/primary_blue"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="64dp"/>
+
+    <TextView
+        android:id="@+id/tvTipsContent"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Here are some tips based on your answers."
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:gravity="center"
+        android:background="@color/white"
+        android:padding="24dp"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTipsTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBackHome"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:text="Back to Home"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/primary_blue"
+        app:cornerRadius="24dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTipsContent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="48dp"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout> 

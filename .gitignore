@@ -12,6 +12,9 @@ venv/
 ENV/
 env/
 .venv/
+.venv310/
+.venv313/
+.apivenv/
 
 # Django stuff:
 *.log
@@ -20,6 +23,12 @@ env/
 *.mo
 *.sqlite3
 db.sqlite3
+
+# Logs directories and files
+/logs/
+logs/
+**/logs/
+*.log
 
 # Django media uploads
 /media/
@@ -76,6 +85,33 @@ media/
 
 # VS Code settings for Python
 .vscode/
+
+# FastAPI specific
+*.log
+access.log
+error.log
+uvicorn.log
+gunicorn.log
+
+# Process IDs
+*.pid
+uvicorn.pid
+gunicorn.pid
+
+# GraphRAG output files (if you don't want to commit them)
+graphrag-api/output/
+**/output/*.parquet
+**/output/*.json
+**/output/*.csv
+
+# GraphRAG cache folders
+graphrag-api/graphrag/openl/cache/
+**/graphrag/**/cache/
+**/cache/
+
+# Temporary files
+*.tmp
+*.temp
 
 # pip-tools
 *.txt~ 

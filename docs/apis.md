@@ -32,7 +32,10 @@ multipart/form-data
 ```bash
 curl -X POST \
   http://localhost:8000/api/v1/upload-resume/ \
-  -F "file=@resume.pdf"
+  -F "file=@./backend/test/fixtures/resume_1.pdf"
+curl -k -X POST \
+  https://115.29.170.231/api/v1/upload-resume/ \
+  -F "file=@./backend/test/fixtures/resume_1.pdf"
 ```
 
 ### Response
