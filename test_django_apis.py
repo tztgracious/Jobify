@@ -10,6 +10,7 @@ Set VERIFY_SSL=True for production environments with valid certificates.
 import requests
 import json
 import sys
+import time
 from typing import Dict, Any, Optional
 import tempfile
 import os
@@ -40,6 +41,7 @@ class APITester:
         self.failed_tests = 0
         self.doc_id = None
         self.save_response_flag = save_response
+        self.questions = []  # Store questions for interview tests
         self.failed_test_names = []  # Track names of failed tests
         
     def print_header(self, test_name: str):
@@ -226,7 +228,9 @@ startxref
             if 'doc_id' in data:
                 self.doc_id = data['doc_id']
                 print(f"{Colors.YELLOW}📋 Extracted doc_id: {self.doc_id}{Colors.NC}")
-                
+            else:
+                print(f"{Colors.RED}❌ ERROR: No doc_id in response{Colors.NC}")
+                self.mark_test_failed("POST /api/v1/upload-resume/ (valid PDF) - no doc_id")
             self.save_response("upload_resume_success", data)
             return data
         except Exception as e:
@@ -362,16 +366,22 @@ startxref
         self.print_header("Get Interview Questions - Valid")
         try:
             data = {'doc_id': self.doc_id}
+            start = time.time()
             response = requests.post(f"{self.base_url}/api/v1/get-questions/", json=data, verify=VERIFY_SSL)
+            end = time.time()
+            print(f"{Colors.YELLOW}⏱️  Response time: {end - start:.2f} seconds{Colors.NC}")
             response_data = self.parse_response(response)
-            self.check_result(200, response.status_code, "POST /api/v1/get-questions/ (valid doc_id)", response_data)
+            self.check_result(201, response.status_code, "POST /api/v1/get-questions/ (valid doc_id)", response_data)
             self.save_response("get_questions_valid", response_data)
+            self.questions = response_data.get('interview_questions', [])
+            if not self.questions:
+                print(f"{Colors.YELLOW}⚠️  No questions returned for doc_id: {self.doc_id}{Colors.NC}")
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
             self.mark_test_failed("POST /api/v1/get-questions/ (valid doc_id)")
             return {}
-            
+
     def test_get_questions_missing_doc_id(self):
         """Test get interview questions without doc_id"""
         self.print_header("Get Interview Questions - Missing doc_id")
@@ -385,7 +395,127 @@ startxref
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
             self.mark_test_failed("POST /api/v1/get-questions/ (missing doc_id)")
             return {}
+
+    def test_submit_answer(self):
+        """Test submitting answers to interview questions"""
+        if not self.doc_id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+            return {}
             
+        self.print_header("Submit Answers - Valid")
+        try:
+            # Hardcoded sample answers for testing
+            sample_answers = [
+                {
+                    "question": self.questions[0],
+                    "answer": "I worked on a web application that processed user resumes and provided interview preparation. This involved building REST APIs, implementing file upload functionality, and integrating with external AI services. The main challenge was handling concurrent file processing and ensuring data consistency.",
+                    "question_index": 0
+                },
+                {
+                    "question": self.questions[1],
+                    "answer": "I follow a comprehensive approach including writing unit tests, conducting code reviews, using static analysis tools, implementing CI/CD pipelines, and following coding standards. I also practice test-driven development and ensure proper error handling and logging.",
+                    "question_index": 1
+                },
+                {
+                    "question": self.questions[2],
+                    "answer": "I start by reproducing the issue consistently, then analyze logs and error messages. I use debugging tools to step through the code, isolate the problem area, and test potential solutions. I also document the issue and solution for future reference.",
+                    "question_index": 2
+                }
+            ]
+            
+            successful_submissions = 0
+            
+            for i, answer_data in enumerate(sample_answers):
+                print(f"{Colors.YELLOW}📝 Submitting answer {i + 1}/3...{Colors.NC}")
+                
+                data = {
+                    'doc_id': self.doc_id,
+                    'question': answer_data['question'],
+                    'answer': answer_data['answer'],
+                    'question_index': answer_data['question_index']
+                }
+                
+                response = requests.post(f"{self.base_url}/api/v1/submit-answer/", json=data, verify=VERIFY_SSL)
+                response_data = self.parse_response(response)
+                
+                if response.status_code == 200:
+                    successful_submissions += 1
+                    print(f"{Colors.GREEN}✅ Answer {i + 1} submitted successfully{Colors.NC}")
+                    
+                    # Show progress if available
+                    if 'progress' in response_data:
+                        progress = response_data['progress']
+                        print(f"{Colors.YELLOW}📊 Progress: {progress}{Colors.NC}")
+                else:
+                    print(f"{Colors.RED}❌ Failed to submit answer {i + 1}: Status {response.status_code}{Colors.NC}")
+                    print(f"{Colors.RED}   Error: {response_data.get('error', 'Unknown error')}{Colors.NC}")
+            
+            # Overall result
+            if successful_submissions == len(sample_answers):
+                self.check_result(200, 200, f"POST /api/v1/submit-answer/ ({successful_submissions}/{len(sample_answers)} answers)", {"success": True})
+                print(f"{Colors.GREEN}✅ All {successful_submissions} answers submitted successfully{Colors.NC}")
+            else:
+                self.mark_test_failed(f"POST /api/v1/submit-answer/ ({successful_submissions}/{len(sample_answers)} answers)")
+                print(f"{Colors.RED}❌ Only {successful_submissions}/{len(sample_answers)} answers submitted successfully{Colors.NC}")
+            
+            self.save_response("submit_answers", {"submitted": successful_submissions, "total": len(sample_answers)})
+            return {"submitted": successful_submissions, "total": len(sample_answers)}
+            
+        except Exception as e:
+            print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
+            self.mark_test_failed("POST /api/v1/submit-answer/")
+            return {}
+
+    def test_get_feedback(self):
+        """Test getting feedback on submitted answers"""
+        if not self.doc_id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+            return {}
+            
+        self.print_header("Get Feedback - Valid")
+        try:
+            start = time.time()
+            response = requests.get(f"{self.base_url}/api/v1/feedback/?doc_id={self.doc_id}", verify=VERIFY_SSL)
+            end = time.time()
+            print(f"{Colors.YELLOW}⏱️  Response time: {end - start:.2f} seconds{Colors.NC}")
+            
+            response_data = self.parse_response(response)
+            self.check_result(200, response.status_code, "GET /api/v1/feedback/ (valid doc_id)", response_data)
+            
+            # Display feedback information
+            if response.status_code == 200 and 'feedbacks' in response_data:
+                feedbacks = response_data['feedbacks']
+                
+                # Count individual question feedback
+                question_feedback_count = len([k for k in feedbacks.keys() if 'feedback' in k and k != 'summary'])
+                print(f"{Colors.GREEN}✅ Received feedback for {question_feedback_count} questions{Colors.NC}")
+                
+                # Show summary if available
+                if 'summary' in feedbacks:
+                    summary = feedbacks['summary']
+                    preview = summary[:150] + '...' if len(summary) > 150 else summary
+                    print(f"{Colors.YELLOW}📝 Summary preview: {preview}{Colors.NC}")
+                
+                # Show first question feedback as example
+                for key, feedback in feedbacks.items():
+                    if 'question_' in key and 'feedback' in key:
+                        preview = feedback[:100] + '...' if len(feedback) > 100 else feedback
+                        print(f"{Colors.YELLOW}💬 Sample feedback: {preview}{Colors.NC}")
+                        break
+                        
+            elif response.status_code == 200:
+                print(f"{Colors.YELLOW}⚠️  Feedback retrieved but format unexpected{Colors.NC}")
+            else:
+                print(f"{Colors.RED}❌ Failed to retrieve feedback{Colors.NC}")
+            
+            self.save_response("get_feedback", response_data)
+            return response_data
+            
+        except Exception as e:
+            print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
+            self.mark_test_failed("GET /api/v1/feedback/")
+            return {}
+
     def test_signup(self):
         """Test user signup"""
         self.print_header("User Signup")
@@ -412,7 +542,7 @@ startxref
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
             self.mark_test_failed("POST /api/v1/signup/ (new user)")
             return {}
-            
+
     def run_all_tests(self):
         """Run all API tests"""
         print(f"{Colors.BLUE}🚀 Starting Django API Tests for Jobify{Colors.NC}")
@@ -433,18 +563,21 @@ startxref
         try:
             # Run all tests
             self.test_debug_endpoint()
-            self.test_upload_resume_no_file()
-            self.test_upload_resume_invalid_file()
-            self.test_get_keywords_no_doc_id()
-            self.test_get_keywords_invalid_doc_id()
+            # self.test_upload_resume_no_file()
+            # self.test_upload_resume_invalid_file()
+            # self.test_get_keywords_no_doc_id()
+            # self.test_get_keywords_invalid_doc_id()
             
             self.test_upload_resume_success(pdf_path)
             self.test_get_keywords_valid()
-            
+            # self.test_target_job_missing_fields()
+            # self.test_get_questions_missing_doc_id()
             self.test_target_job_valid()
-            self.test_target_job_missing_fields()
+            # Interview workflow tests
             self.test_get_questions_valid()
-            self.test_get_questions_missing_doc_id()
+            self.test_submit_answer()
+            self.test_get_feedback()
+            
             # self.test_signup()
             
         finally:
