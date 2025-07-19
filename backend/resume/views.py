@@ -13,43 +13,45 @@ from rest_framework.response import Response
 from .models import Resume
 from .utils import check_file_size_with_message, parse_resume, get_resume_by_doc_id
 
+
 # Configure custom logger for jobify.log
 def setup_jobify_logger():
     """Setup custom logger that writes to jobify.log file"""
     logger = logging.getLogger('jobify')
-    
+
     # Prevent duplicate handlers if this function is called multiple times
     if logger.handlers:
         return logger
-    
+
     logger.setLevel(logging.INFO)
-    
+
     # Create logs directory if it doesn't exist
     log_dir = os.path.join(os.path.dirname(settings.BASE_DIR), 'logs')
     os.makedirs(log_dir, exist_ok=True)
-    
+
     # Create rotating file handler (max 10MB, keep 5 backup files)
     log_file = os.path.join(log_dir, 'jobify.log')
     handler = RotatingFileHandler(
         log_file,
-        maxBytes=10*1024*1024,  # 10MB
+        maxBytes=10 * 1024 * 1024,  # 10MB
         backupCount=5
     )
-    
+
     # Create formatter with detailed information
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     logger.addHandler(handler)
-    
+
     # Prevent propagation to root logger to avoid duplicate logs
     logger.propagate = False
-    
+
     return logger
+
 
 # Initialize custom logger
 logger = setup_jobify_logger()
@@ -64,7 +66,7 @@ def upload_resume(request):
     logger.info("=== UPLOAD RESUME REQUEST STARTED ===")
     logger.info(f"Request method: {request.method}")
     logger.info(f"Request headers: {dict(request.headers)}")
-    
+
     file = request.FILES.get('file')
     if not file:
         logger.warning("Upload attempt with no file provided")
@@ -142,7 +144,7 @@ def upload_resume(request):
 
     # Log successful upload
     logger.info(f"Resume uploaded successfully: doc_id={doc_id}, filename={filename}, file_size={file.size} bytes")
-    
+
     # Start background parsing
     try:
         threading.Thread(target=parse_resume, args=(resume.id,)).start()
@@ -150,7 +152,7 @@ def upload_resume(request):
     except Exception as e:
         logger.error(f"Failed to start background parsing thread: {str(e)}")
         # Don't fail the request, just log the error
-    
+
     logger.info("=== UPLOAD RESUME REQUEST COMPLETED SUCCESSFULLY ===")
     return Response({
         "doc_id": doc_id,
@@ -167,7 +169,7 @@ def get_keywords(request):
     """
     logger.info("=== GET KEYWORDS REQUEST STARTED ===")
     logger.info(f"Request data: {request.data}")
-    
+
     doc_id = request.data.get('doc_id')
     if not doc_id:
         logger.warning("get_keywords called without doc_id")
@@ -238,7 +240,7 @@ def target_job(request):
     """
     logger.info("=== TARGET JOB REQUEST STARTED ===")
     logger.info(f"Request data: {request.data}")
-    
+
     # Extract data from request
     doc_id = request.data.get('doc_id')
     title = request.data.get('title')
@@ -259,7 +261,7 @@ def target_job(request):
         logger.warning(f"Target job requested for non-existent doc_id: {doc_id}")
         logger.info("=== TARGET JOB REQUEST FAILED - RESUME NOT FOUND ===")
         return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
-    
+
     # Save target job
     try:
         old_target_job = resume.target_job
@@ -271,7 +273,7 @@ def target_job(request):
         logger.error(f"Failed to save target job for doc_id: {doc_id}, error: {str(e)}")
         logger.info("=== TARGET JOB REQUEST FAILED - DATABASE ERROR ===")
         return Response({"error": f"Database error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     return Response({
         "doc_id": doc_id,
         "message": "Target job saved successfully"
@@ -286,7 +288,7 @@ def remove_resume(request):
     """
     logger.info("=== REMOVE RESUME REQUEST STARTED ===")
     logger.info(f"Request data: {request.data}")
-    
+
     doc_id = request.data.get('doc_id')
     if not doc_id:
         logger.warning("remove_resume called without doc_id")
@@ -337,7 +339,7 @@ def remove_resume(request):
 
     logger.info(f"Resume removal completed for doc_id: {doc_id}, file_removed: {file_removed}")
     logger.info("=== REMOVE RESUME REQUEST COMPLETED SUCCESSFULLY ===")
-    
+
     return Response({
         "success": True,
         "doc_id": doc_id,
@@ -363,7 +365,7 @@ def cleanup_all_resumes(request):
     logger.info(f"Request data: {request.data}")
     logger.info(f"Request IP: {request.META.get('REMOTE_ADDR', 'unknown')}")
     logger.info(f"Request User-Agent: {request.META.get('HTTP_USER_AGENT', 'unknown')}")
-    
+
     # Security Check 1: Only allow in DEBUG mode (development/testing)
     # if not settings.DEBUG:
     #     logger.warning("Cleanup all resumes attempted in production mode - BLOCKED")
@@ -372,7 +374,7 @@ def cleanup_all_resumes(request):
     #         "success": False,
     #         "error": "This operation is only allowed in development mode"
     #     }, status=status.HTTP_403_FORBIDDEN)
-    
+
     # Security Check 2: Require confirmation token
     confirmation_token = request.data.get('confirmation_token')
     expected_token = os.getenv('DELETE_ALL_RESUMES_TOKEN', 'o2euinpiebvoian;*&Ts')  # Change this periodically
@@ -384,7 +386,7 @@ def cleanup_all_resumes(request):
             "success": False,
             "error": "Invalid confirmation token required for this destructive operation"
         }, status=status.HTTP_401_UNAUTHORIZED)
-    
+
     # Security Check 3: Additional confirmation field
     confirm_action = request.data.get('confirm_action')
     if confirm_action != "DELETE_ALL_RESUME_DATA":
@@ -394,13 +396,13 @@ def cleanup_all_resumes(request):
             "success": False,
             "error": "Must confirm action with 'DELETE_ALL_RESUME_DATA'"
         }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     logger.warning("=== STARTING DESTRUCTIVE CLEANUP OPERATION ===")
-    
+
     # Get statistics before cleanup
     total_resumes = Resume.objects.count()
     logger.info(f"Total resumes in database before cleanup: {total_resumes}")
-    
+
     # Count files in media directory
     media_dir = os.path.join(settings.MEDIA_ROOT, 'resumes')
     file_count = 0
@@ -410,13 +412,13 @@ def cleanup_all_resumes(request):
             logger.info(f"Total PDF files in media directory: {file_count}")
         except Exception as e:
             logger.error(f"Error counting files in media directory: {str(e)}")
-    
+
     # Statistics tracking
     files_removed = 0
     files_failed = 0
     db_records_removed = 0
     db_errors = []
-    
+
     # Step 1: Remove all files from media directory
     logger.info("Starting file cleanup from media directory...")
     if os.path.exists(media_dir):
@@ -435,24 +437,24 @@ def cleanup_all_resumes(request):
             logger.error(f"Error accessing media directory: {str(e)}")
     else:
         logger.warning(f"Media directory does not exist: {media_dir}")
-    
+
     # Step 2: Remove all database entries
     logger.info("Starting database cleanup...")
     try:
         # Get all resume IDs for logging
         resume_ids = list(Resume.objects.values_list('id', flat=True))
         logger.info(f"Resume IDs to be deleted: {resume_ids}")
-        
+
         # Delete all resumes
         db_records_removed, deletion_info = Resume.objects.all().delete()
         logger.info(f"Database cleanup completed. Records removed: {db_records_removed}")
         logger.info(f"Deletion details: {deletion_info}")
-        
+
     except Exception as e:
         error_msg = f"Database cleanup failed: {str(e)}"
         logger.error(error_msg)
         db_errors.append(error_msg)
-    
+
     # Prepare response
     cleanup_summary = {
         "success": True,
@@ -468,11 +470,11 @@ def cleanup_all_resumes(request):
         },
         "message": "Cleanup operation completed"
     }
-    
+
     # Log final summary
     logger.warning("=== CLEANUP OPERATION COMPLETED ===")
     logger.info(f"Final summary: {cleanup_summary}")
-    
+
     # Return appropriate status based on results
     if files_failed > 0 or db_errors:
         cleanup_summary["success"] = False

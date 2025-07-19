@@ -28,8 +28,7 @@ def get_resume_by_doc_id(doc_id):
     try:
         return Resume.objects.get(id=doc_id)
     except (Resume.DoesNotExist, ValueError, ValidationError):
-        # ValueError is raised when doc_id is not a valid UUID
-        # ValidationError is raised by Django's UUID validation
+        logger.error(f"Error retrieving resume with doc_id {doc_id}")
         return None
 
 
@@ -50,15 +49,11 @@ def parse_resume(doc_id: str):
         resume.status = Resume.Status.COMPLETE
         resume.save()
 
-        print(f"Successfully processed resume {doc_id}")
-        print(f"Keywords extracted: {keywords}")
-        print(f"Resume status: {resume.status}")
-
     except Resume.DoesNotExist:
-        print(f"Error: Resume with id {doc_id} not found")
+        logger.error(f"Resume {doc_id} not found in database")
         return False
     except Exception as e:
-        print(f"Error parsing resume {doc_id}: {str(e)}")
+        logger.error(f"Error parsing resume {doc_id}: {str(e)}")
         # Mark as failed processing (still False but we could add a failed status later)
         try:
             resume = Resume.objects.get(id=doc_id)
@@ -72,7 +67,6 @@ def parse_resume(doc_id: str):
     return True
 
 
-# TODO: parse the file with llama parse first and write a proper prompt
 def get_keywords_using_openai(text) -> str:
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -110,6 +104,7 @@ def get_keywords_using_openai(text) -> str:
         keywords = json.loads(match[0])
     except json.JSONDecodeError:
         print(f"Error parsing keywords: {response_text}")
+        return ""
     return keywords
 
 

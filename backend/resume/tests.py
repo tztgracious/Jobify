@@ -601,32 +601,32 @@ class RemoveResumeTests(APITestCase):
         """Test successful resume removal"""
         # Upload a resume first
         doc_id = self._upload_test_resume()
-        
+
         # Verify the resume exists
         resume = Resume.objects.get(id=doc_id)
         file_path = resume.local_path
         self.assertTrue(os.path.exists(file_path))
-        
+
         # Remove the resume
         response = self.client.post(self.url, {'doc_id': doc_id})
-        
+
         # Verify response
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['success'])
         self.assertEqual(response.data['doc_id'], doc_id)
         self.assertEqual(response.data['message'], 'Resume removed successfully')
         self.assertTrue(response.data['file_removed'])
-        
+
         # Verify database record was deleted
         self.assertFalse(Resume.objects.filter(id=doc_id).exists())
-        
+
         # Verify file was deleted
         self.assertFalse(os.path.exists(file_path))
 
     def test_remove_resume_no_doc_id(self):
         """Test remove resume without providing doc_id"""
         response = self.client.post(self.url, {})
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data['success'])
         self.assertEqual(response.data['error'], 'doc_id is required')
@@ -634,7 +634,7 @@ class RemoveResumeTests(APITestCase):
     def test_remove_resume_invalid_doc_id(self):
         """Test remove resume with non-existent doc_id"""
         response = self.client.post(self.url, {'doc_id': 'invalid-uuid-12345'})
-        
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(response.data['success'])
         self.assertEqual(response.data['error'], 'Resume not found')
@@ -643,23 +643,23 @@ class RemoveResumeTests(APITestCase):
         """Test remove resume when database entry exists but file is missing"""
         # Upload a resume
         doc_id = self._upload_test_resume()
-        
+
         # Manually delete the file but keep database record
         resume = Resume.objects.get(id=doc_id)
         file_path = resume.local_path
         if os.path.exists(file_path):
             os.remove(file_path)
-        
+
         # Try to remove the resume
         response = self.client.post(self.url, {'doc_id': doc_id})
-        
+
         # Should still succeed (database record removed)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['success'])
         self.assertEqual(response.data['doc_id'], doc_id)
         self.assertEqual(response.data['message'], 'Resume removed successfully')
         self.assertFalse(response.data['file_removed'])  # File wasn't removed because it didn't exist
-        
+
         # Verify database record was deleted
         self.assertFalse(Resume.objects.filter(id=doc_id).exists())
 
@@ -667,14 +667,14 @@ class RemoveResumeTests(APITestCase):
         """Test removing a resume that was already removed"""
         # Upload a resume
         doc_id = self._upload_test_resume()
-        
+
         # Remove it once
         response1 = self.client.post(self.url, {'doc_id': doc_id})
         self.assertEqual(response1.status_code, status.HTTP_200_OK)
-        
+
         # Try to remove it again
         response2 = self.client.post(self.url, {'doc_id': doc_id})
-        
+
         # Should return 404 not found
         self.assertEqual(response2.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(response2.data['success'])
@@ -683,17 +683,17 @@ class RemoveResumeTests(APITestCase):
     def test_remove_resume_response_format(self):
         """Test that response format matches API specification"""
         doc_id = self._upload_test_resume()
-        
+
         response = self.client.post(self.url, {'doc_id': doc_id})
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         # Verify response format
         self.assertIn('success', response.data)
         self.assertIn('doc_id', response.data)
         self.assertIn('message', response.data)
         self.assertIn('file_removed', response.data)
-        
+
         # Verify correct values
         self.assertTrue(response.data['success'])
         self.assertEqual(response.data['doc_id'], doc_id)
@@ -705,14 +705,14 @@ class RemoveResumeTests(APITestCase):
         # Upload two resumes
         doc_id1 = self._upload_test_resume()
         doc_id2 = self._upload_test_resume()
-        
+
         # Remove only the first one
         response = self.client.post(self.url, {'doc_id': doc_id1})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         # Verify first resume is gone
         self.assertFalse(Resume.objects.filter(id=doc_id1).exists())
-        
+
         # Verify second resume still exists
         self.assertTrue(Resume.objects.filter(id=doc_id2).exists())
         resume2 = Resume.objects.get(id=doc_id2)
