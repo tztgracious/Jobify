@@ -18,7 +18,7 @@ class WelcomeActivity : AppCompatActivity() {
 
         // Button
         binding.startButton.setOnClickListener {
-            // Jump to ChatActivity
+            // Jump to ResumeActivity
             startActivity(Intent(this, UploadResumeActivity::class.java))
             finish()  // Close WelcomeActivity
         }
