@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import Resume
-from .utils import check_file_size_with_message, parse_resume, get_resume_by_doc_id
+from .utils import check_file_size_with_message, parse_resume, get_resume_by_doc_id, grammar_check, llamaparse_pdf_v1
 
 
 # Configure custom logger for jobify.log
@@ -159,6 +159,67 @@ def upload_resume(request):
         "valid_file": True,
         "error_msg": None
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def get_grammar_results(request):
+    """
+    Retrieve grammar check results for a given doc_id.
+    Returns processing status and grammar check results.
+    """
+    logger.info("=== GET GRAMMAR RESULTS REQUEST STARTED ===")
+    logger.info(f"Request data: {request.data}")
+
+    doc_id = request.data.get('doc_id')
+    if not doc_id:
+        logger.warning("get_grammar_results called without doc_id")
+        logger.info("=== GET GRAMMAR RESULTS REQUEST FAILED - NO DOC_ID ===")
+        return Response({
+            "finished": False,
+            "grammar_check": None,
+            "error": "doc_id is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    resume = get_resume_by_doc_id(doc_id)
+    if not resume:
+        logger.warning(f"Grammar results requested for non-existent doc_id: {doc_id}")
+        logger.info("=== GET GRAMMAR RESULTS REQUEST FAILED - RESUME NOT FOUND ===")
+        return Response({
+            "finished": False,
+            "grammar_check": None,
+            "error": "Resume not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Check processing status
+    if resume.status == Resume.Status.FAILED:
+        logger.error(f"Resume processing failed for doc_id: {doc_id}, restarting parse")
+        threading.Thread(target=parse_resume, args=(resume.id,)).start()
+        logger.info("=== GET GRAMMAR RESULTS REQUEST - PROCESSING FAILED, RESTARTING ===")
+        return Response({
+            "finished": False,
+            "grammar_check": None,
+            "error": "Resume processing failed. Trying again."
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif resume.status == Resume.Status.PROCESSING:
+        logger.info(f"Resume still processing for doc_id: {doc_id}")
+        logger.info("=== GET GRAMMAR RESULTS REQUEST - STILL PROCESSING ===")
+        return Response({
+            "finished": False,
+            "grammar_check": None,
+            "error": ""
+        }, status=status.HTTP_200_OK)
+    
+    elif resume.status == Resume.Status.COMPLETE:
+        grammar_results = resume.grammar_results or {}
+        logger.info(f"Resume processing complete for doc_id: {doc_id}, grammar results count: {len(grammar_results)}")
+        logger.info(f"Grammar results: {grammar_results}")
+        logger.info("=== GET GRAMMAR RESULTS REQUEST COMPLETED SUCCESSFULLY ===")
+        return Response({
+            "finished": True,
+            "grammar_check": grammar_results,
+            "error": ""
+        }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

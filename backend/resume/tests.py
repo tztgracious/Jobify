@@ -717,3 +717,201 @@ class RemoveResumeTests(APITestCase):
         self.assertTrue(Resume.objects.filter(id=doc_id2).exists())
         resume2 = Resume.objects.get(id=doc_id2)
         self.assertTrue(os.path.exists(resume2.local_path))
+
+
+class GetGrammarResultsTests(APITestCase):
+    def setUp(self):
+        self.url = reverse('get-grammar-results')
+        self.valid_pdf_content = b'%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n179\n%%EOF'
+
+    def tearDown(self):
+        # Clean up uploaded files after each test
+        from resume.models import Resume
+        import os
+        from django.conf import settings
+
+        resumes = Resume.objects.all()
+        for resume in resumes:
+            if resume.local_path:
+                file_path = resume.local_path
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+        Resume.objects.all().delete()
+
+    def _upload_test_resume(self):
+        """Helper method to upload a test resume and return doc_id"""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        pdf_file = SimpleUploadedFile(
+            "test_resume.pdf",
+            self.valid_pdf_content,
+            content_type="application/pdf"
+        )
+
+        upload_url = reverse('upload-resume')
+        response = self.client.post(upload_url, {'file': pdf_file})
+        return response.data['doc_id']
+
+    def test_get_grammar_results_no_doc_id(self):
+        """Test get_grammar_results without providing doc_id"""
+        response = self.client.post(self.url, {})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['finished'])
+        self.assertIsNone(response.data['grammar_check'])
+        self.assertEqual(response.data['error'], 'doc_id is required')
+
+    def test_get_grammar_results_invalid_doc_id(self):
+        """Test get_grammar_results with non-existent doc_id"""
+        response = self.client.post(self.url, {'doc_id': 'invalid-uuid'})
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(response.data['finished'])
+        self.assertIsNone(response.data['grammar_check'])
+        self.assertEqual(response.data['error'], 'Resume not found')
+
+    def test_get_grammar_results_processing_status(self):
+        """Test get_grammar_results when resume is still processing"""
+        from resume.models import Resume
+
+        # Upload a resume
+        doc_id = self._upload_test_resume()
+
+        # Ensure it's in processing state
+        resume = Resume.objects.get(id=doc_id)
+        resume.status = Resume.Status.PROCESSING
+        resume.save()
+
+        response = self.client.post(self.url, {'doc_id': doc_id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['finished'])
+        self.assertIsNone(response.data['grammar_check'])
+        self.assertEqual(response.data['error'], '')
+
+    def test_get_grammar_results_complete_status(self):
+        """Test get_grammar_results when resume processing is complete"""
+        from resume.models import Resume
+
+        # Upload a resume
+        doc_id = self._upload_test_resume()
+
+        # Set it to complete with grammar results
+        grammar_data = {
+            "language": "en-US",
+            "matches": [
+                {
+                    "message": "Possible typo: you repeated a word",
+                    "shortMessage": "Possible typo",
+                    "offset": 123,
+                    "length": 7,
+                    "replacements": [{"value": "example"}],
+                    "context": {
+                        "text": "...example example text...",
+                        "offset": 3,
+                        "length": 19
+                    }
+                }
+            ]
+        }
+        resume = Resume.objects.get(id=doc_id)
+        resume.status = Resume.Status.COMPLETE
+        resume.grammar_results = grammar_data
+        resume.save()
+
+        response = self.client.post(self.url, {'doc_id': doc_id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['finished'])
+        self.assertEqual(response.data['grammar_check'], grammar_data)
+        self.assertEqual(response.data['error'], '')
+
+    def test_get_grammar_results_complete_status_no_results(self):
+        """Test get_grammar_results when processing is complete but no grammar results"""
+        from resume.models import Resume
+
+        # Upload a resume
+        doc_id = self._upload_test_resume()
+
+        # Set it to complete without grammar results
+        resume = Resume.objects.get(id=doc_id)
+        resume.status = Resume.Status.COMPLETE
+        resume.grammar_results = None
+        resume.save()
+
+        response = self.client.post(self.url, {'doc_id': doc_id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['finished'])
+        self.assertEqual(response.data['grammar_check'], {})
+        self.assertEqual(response.data['error'], '')
+
+    def test_get_grammar_results_complete_status_empty_results(self):
+        """Test get_grammar_results when processing is complete with empty grammar results"""
+        from resume.models import Resume
+
+        # Upload a resume
+        doc_id = self._upload_test_resume()
+
+        # Set it to complete with empty grammar results
+        resume = Resume.objects.get(id=doc_id)
+        resume.status = Resume.Status.COMPLETE
+        resume.grammar_results = {}
+        resume.save()
+
+        response = self.client.post(self.url, {'doc_id': doc_id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['finished'])
+        self.assertEqual(response.data['grammar_check'], {})
+        self.assertEqual(response.data['error'], '')
+
+    @patch('threading.Thread')
+    def test_get_grammar_results_failed_status_restarts_processing(self, mock_thread):
+        """Test get_grammar_results restarts processing when status is failed"""
+        from resume.models import Resume
+
+        # Upload a resume
+        doc_id = self._upload_test_resume()
+
+        # Set it to failed status
+        resume = Resume.objects.get(id=doc_id)
+        resume.status = Resume.Status.FAILED
+        resume.save()
+
+        response = self.client.post(self.url, {'doc_id': doc_id})
+
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertFalse(response.data['finished'])
+        self.assertIsNone(response.data['grammar_check'])
+        self.assertEqual(response.data['error'], 'Resume processing failed. Trying again.')
+
+        # Verify that parse_resume was called to restart processing
+        # Note: Thread might be called twice - once from upload, once from failed status restart
+        self.assertTrue(mock_thread.call_count >= 1)
+        mock_thread.return_value.start.assert_called()
+
+    def test_get_grammar_results_json_content_type(self):
+        """Test that get_grammar_results accepts JSON data"""
+        import json
+        from resume.models import Resume
+
+        # Upload a resume
+        doc_id = self._upload_test_resume()
+
+        # Set it to complete with grammar results
+        resume = Resume.objects.get(id=doc_id)
+        resume.status = Resume.Status.COMPLETE
+        resume.grammar_results = {"language": "en-US", "matches": []}
+        resume.save()
+
+        response = self.client.post(
+            self.url,
+            json.dumps({'doc_id': doc_id}),
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['finished'])
+        self.assertEqual(response.data['grammar_check'], {"language": "en-US", "matches": []})
+        self.assertEqual(response.data['error'], '')

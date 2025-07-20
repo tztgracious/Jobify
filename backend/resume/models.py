@@ -24,6 +24,7 @@ class Resume(models.Model):
     questions = models.JSONField(default=list)  # stores like ["Why choose python?", "Describe a team project"]
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PROCESSING)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    grammar_results = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.id} ({self.status})"

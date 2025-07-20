@@ -43,6 +43,21 @@ def parse_resume(doc_id: str):
 
         # Extract keywords using OpenAI
         keywords = get_keywords_using_openai(text)
+        
+        # Perform grammar check on uploaded resume
+        grammar_results = None
+        grammar_error = None
+        try:
+            logger.info(f"Starting grammar check for doc_id: {doc_id}")
+
+            # Perform grammar check
+            grammar_results = grammar_check(text)
+            resume.grammar_results = grammar_results
+        except Exception as e:
+            grammar_error = str(e)
+            logger.error(f"Grammar check failed for doc_id: {doc_id}, error: {grammar_error}")
+            # Don't fail the request if grammar check fails
+
 
         # Store keywords in database and mark as processed
         resume.keywords = keywords
