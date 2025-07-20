@@ -301,6 +301,113 @@ POST /api/v1/logout/
 
 ---
 
+## 📝 Get Grammar Results
+
+### Description
+
+Retrieve grammar check results for a given resume identified by `doc_id`. Returns the grammar analysis performed on the resume text, including detected issues, suggestions, and corrections.
+
+### Endpoint
+
+```text
+POST /api/v1/get-grammar-results/
+```
+
+### Request
+
+#### Content-Type
+
+```text
+application/json
+```
+
+#### Body Parameters
+
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+
+### Example cURL
+
+```bash
+curl -X POST \
+  http://localhost:8000/api/v1/get-grammar-results/ \
+  -H "Content-Type: application/json" \
+  -d '{"doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
+```
+
+### Response
+
+#### Success - `200 OK`
+
+```json
+{
+  "finished": true,
+  "grammar_check": {
+    "language": "en-US",
+    "matches": [
+      {
+        "message": "Possible typo: you repeated a word",
+        "shortMessage": "Possible typo",
+        "offset": 123,
+        "length": 7,
+        "replacements": [
+          {
+            "value": "example"
+          }
+        ],
+        "context": {
+          "text": "...example example text...",
+          "offset": 3,
+          "length": 19
+        },
+        "sentence": "This is an example example text.",
+        "rule": {
+          "id": "WORD_REPEAT_RULE",
+          "category": {
+            "id": "TYPOS",
+            "name": "Possible Typo"
+          }
+        }
+      }
+    ]
+  },
+  "error": ""
+}
+```
+
+#### Processing not finished - `200 OK`
+
+```json
+{
+  "finished": false,
+  "grammar_check": null,
+  "error": ""
+}
+```
+
+#### Error occurred - `500 Internal Server Error`
+
+```json
+{
+  "finished": false,
+  "grammar_check": null,
+  "error": "Resume processing failed. Trying again."
+}
+```
+
+#### Invalid doc_id - `404 Not Found`
+
+```json
+{
+  "finished": false,
+  "grammar_check": null,
+  "error": "Resume not found"
+}
+```
+
+---
+
 ## 🎯 Target Job Selection
 
 ### Description
