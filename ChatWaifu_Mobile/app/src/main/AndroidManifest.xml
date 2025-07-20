@@ -33,9 +33,6 @@
             android:name=".ui.resume.UploadResumeActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.targetjob.TargetJobActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.questions.InterviewQuestionsActivity"
             android:exported="false" />
         <activity

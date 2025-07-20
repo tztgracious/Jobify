@@ -38,7 +38,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/keywords_count"
+                android:text="@string/keywords_title"
                 android:textColor="@color/primary_blue"
                 android:textSize="16sp"
                 android:textStyle="bold"/>
@@ -102,13 +102,13 @@
 
     <!-- 期望职位输入框 -->
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilDesiredJob"
+        android:id="@+id/jobInputLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:layout_marginTop="20dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         app:boxBackgroundMode="outline"
         app:boxCornerRadiusTopStart="12dp"
         app:boxCornerRadiusTopEnd="12dp"
@@ -118,16 +118,49 @@
         app:layout_constraintTop_toBottomOf="@id/cardDesiredJob"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etDesiredJob"
+
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+            android:id="@+id/etJobTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:hint="e.g. Software Engineer"
             android:textColor="@color/primary_blue"
             android:textColorHint="@color/primary_blue"
-            android:inputType="textPersonName"/>
+            android:inputType="text"
+            android:completionThreshold="1"
+            android:dropDownHeight="300dp"
+            android:dropDownWidth="match_parent"
+            android:dropDownVerticalOffset="4dp"/>
+
     </com.google.android.material.textfield.TextInputLayout>
+<!--    <com.google.android.material.textfield.TextInputLayout-->
+<!--        android:id="@+id/tilDesiredJob"-->
+<!--        android:layout_width="0dp"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginStart="32dp"-->
+<!--        android:layout_marginEnd="32dp"-->
+<!--        android:layout_marginTop="20dp"-->
+<!--        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"-->
+<!--        app:boxBackgroundMode="outline"-->
+<!--        app:boxCornerRadiusTopStart="12dp"-->
+<!--        app:boxCornerRadiusTopEnd="12dp"-->
+<!--        app:boxCornerRadiusBottomStart="12dp"-->
+<!--        app:boxCornerRadiusBottomEnd="12dp"-->
+<!--        app:boxBackgroundColor="@android:color/transparent"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/cardDesiredJob"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent">-->
+<!--        <com.google.android.material.textfield.TextInputEditText-->
+<!--            android:id="@+id/etDesiredJob"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:minHeight="48dp"-->
+<!--            android:hint="e.g. Software Engineer"-->
+<!--            android:textColor="@color/primary_blue"-->
+<!--            android:textColorHint="@color/primary_blue"-->
+<!--            android:inputType="textPersonName"/>-->
+<!--    </com.google.android.material.textfield.TextInputLayout>-->
 
     <!-- 底部按钮 -->
     <LinearLayout

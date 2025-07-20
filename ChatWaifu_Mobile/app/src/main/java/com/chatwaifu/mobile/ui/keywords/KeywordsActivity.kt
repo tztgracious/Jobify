@@ -16,6 +16,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.Color
 import android.util.Log
 import android.view.View
+import android.widget.ArrayAdapter
 import com.google.android.material.snackbar.Snackbar
 
 class KeywordsActivity : AppCompatActivity() {
@@ -24,11 +25,26 @@ class KeywordsActivity : AppCompatActivity() {
     private val viewModel: KeywordsViewModel by viewModels()
     private val TAG = "KeywordsActivity"
 
+    private val jobTitles = arrayOf(
+        "Software Engineer",
+        "Frontend Developer",
+        "Backend Developer",
+        "Full Stack Developer",
+        "Data Scientist",
+        "Machine Learning Engineer",
+        "DevOps Engineer",
+        "QA Engineer",
+        "Mobile Developer",
+        "UI/UX Designer",
+        "Product Manager"
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityKeywordsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupJobDropdown()
         setupButtons()
         setupObservers()
         
@@ -45,7 +61,36 @@ class KeywordsActivity : AppCompatActivity() {
         val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
         displayKeywords(keywords.toList())
     }
-    
+
+    private fun setupJobDropdown() {
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            jobTitles
+        )
+        binding.etJobTitle.setAdapter(adapter)
+
+        // 点击时显示下拉框
+        binding.etJobTitle.setOnClickListener {
+            binding.etJobTitle.showDropDown()
+        }
+
+        // 获得焦点时显示下拉框
+        binding.etJobTitle.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) binding.etJobTitle.showDropDown()
+        }
+    }
+
+    private fun validateInput(jobTitle: String): Boolean {
+        return if (jobTitle.isEmpty()) {
+            binding.jobInputLayout.error = "Please select a job title"
+            false
+        } else {
+            binding.jobInputLayout.error = null
+            true
+        }
+    }
+
     private fun setupButtons() {
         // 返回按钮直接回到 UploadResumeActivity
         binding.btnBack.setOnClickListener {
