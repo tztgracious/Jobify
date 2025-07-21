@@ -22,7 +22,7 @@ class UploadResumeTests(APITestCase):
 
         resumes = Resume.objects.all()
         for resume in resumes:
-            file_path = os.path.join(settings.MEDIA_ROOT, resume.local_path)
+            file_path = os.path.join(settings.MEDIA_ROOT, resume.resume_local_path)
             if os.path.exists(file_path):
                 os.remove(file_path)
         Resume.objects.all().delete()
@@ -48,7 +48,7 @@ class UploadResumeTests(APITestCase):
         doc_id = response.data['doc_id']
         resume = Resume.objects.get(id=doc_id)
         # self.assertEqual(resume.local_path, f"resumes/{doc_id}.pdf")
-        self.assertTrue(os.path.exists(resume.local_path), f"Resume file does not exist at path: {resume.local_path}")
+        self.assertTrue(os.path.exists(resume.resume_local_path), f"Resume file does not exist at path: {resume.resume_local_path}")
 
     def test_upload_resume_no_file(self):
         """Test upload without providing a file"""
@@ -105,8 +105,8 @@ class GetKeywordsTests(APITestCase):
 
         resumes = Resume.objects.all()
         for resume in resumes:
-            if os.path.exists(resume.local_path):
-                os.remove(resume.local_path)
+            if os.path.exists(resume.resume_local_path):
+                os.remove(resume.resume_local_path)
         Resume.objects.all().delete()
 
     def _upload_test_resume(self):
@@ -320,8 +320,8 @@ class TargetJobTests(APITestCase):
 
         resumes = Resume.objects.all()
         for resume in resumes:
-            if os.path.exists(resume.local_path):
-                os.remove(resume.local_path)
+            if os.path.exists(resume.resume_local_path):
+                os.remove(resume.resume_local_path)
         Resume.objects.all().delete()
 
     def _upload_test_resume(self):
@@ -583,8 +583,8 @@ class RemoveResumeTests(APITestCase):
         # Clean up any remaining files after each test
         resumes = Resume.objects.all()
         for resume in resumes:
-            if os.path.exists(resume.local_path):
-                os.remove(resume.local_path)
+            if os.path.exists(resume.resume_local_path):
+                os.remove(resume.resume_local_path)
         Resume.objects.all().delete()
 
     def _upload_test_resume(self):
@@ -604,7 +604,7 @@ class RemoveResumeTests(APITestCase):
 
         # Verify the resume exists
         resume = Resume.objects.get(id=doc_id)
-        file_path = resume.local_path
+        file_path = resume.resume_local_path
         self.assertTrue(os.path.exists(file_path))
 
         # Remove the resume
@@ -646,7 +646,7 @@ class RemoveResumeTests(APITestCase):
 
         # Manually delete the file but keep database record
         resume = Resume.objects.get(id=doc_id)
-        file_path = resume.local_path
+        file_path = resume.resume_local_path
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -716,7 +716,7 @@ class RemoveResumeTests(APITestCase):
         # Verify second resume still exists
         self.assertTrue(Resume.objects.filter(id=doc_id2).exists())
         resume2 = Resume.objects.get(id=doc_id2)
-        self.assertTrue(os.path.exists(resume2.local_path))
+        self.assertTrue(os.path.exists(resume2.resume_local_path))
 
 
 class GetGrammarResultsTests(APITestCase):
@@ -732,8 +732,8 @@ class GetGrammarResultsTests(APITestCase):
 
         resumes = Resume.objects.all()
         for resume in resumes:
-            if resume.local_path:
-                file_path = resume.local_path
+            if resume.resume_local_path:
+                file_path = resume.resume_local_path
                 if os.path.exists(file_path):
                     os.remove(file_path)
         Resume.objects.all().delete()

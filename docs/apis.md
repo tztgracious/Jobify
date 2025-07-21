@@ -1,15 +1,16 @@
 # 🚀 Jobify Backend APIs
 
-## � Current Status
+## 📊 Current Status
 
 **✅ All Core APIs Implemented and Tested**
 
 The Jobify backend now provides a complete interview preparation workflow with:
 
 - **Resume Processing** - PDF upload and keyword extraction using OpenAI
-- **Job Targeting** - Customizable job preferences for tailored questions
+- **Job Targeting** - Customizable job preferences for tailored questions with text/video answer options
 - **AI Question Generation** - Personalized interview questions based on resume and target job
-- **Answer Submission** - Structured answer collection with progress tracking
+- **Answer Submission** - Structured answer collection with progress tracking (text and video)
+- **Video Upload & Processing** - 75MB video upload with audio extraction capabilities
 - **Intelligent Feedback** - Detailed AI-powered feedback and suggestions
 - **Integration Testing** - Comprehensive end-to-end test coverage
 
@@ -59,7 +60,7 @@ curl -k -X POST \
 
 ```json
 {
-  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
   "valid_file": true,
   "error_msg": null
 }
@@ -69,7 +70,7 @@ curl -k -X POST \
 
 ```json
 {
-  "doc_id": null,
+  "id": null,
   "valid_file": false,
   "error_msg": "File too big."
 }
@@ -79,7 +80,7 @@ or
 
 ```json
 {
-  "doc_id": null,
+  "id": null,
   "valid_file": false,
   "error_msg": "Not a PDF file."
 }
@@ -412,7 +413,7 @@ curl -X POST \
 
 ### Description
 
-Allows users to save their target job preferences for a specific resume. This information can be used to tailor interview questions and recommendations.
+Allows users to save their target job preferences for a specific resume. This information can be used to tailor interview questions and recommendations. Users can also specify whether they want to submit answers via text or video format.
 
 ### Endpoint
 
@@ -436,12 +437,13 @@ multipart/form-data
 
 #### Body Parameters
 
-| Field          | Type          | Required | Description                                              |
-| -------------- | ------------- | -------- | -------------------------------------------------------- |
-| `doc_id`       | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
-| `title`        | string        | ✅       | The target job title (e.g., "Software Engineer").        |
-| `description`  | string        | ❌       | Detailed job description and responsibilities.           |
-| `requirements` | string        | ❌       | Job requirements and qualifications.                     |
+| Field          | Type          | Required | Description                                                                |
+| -------------- | ------------- | -------- | -------------------------------------------------------------------------- |
+| `doc_id`       | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint.                   |
+| `title`        | string        | ✅       | The target job title (e.g., "Software Engineer").                          |
+| `answer_type`  | string        | ❌       | How answers will be submitted: 'text' or 'video' (defaults to 'text').     |
+| `description`  | string        | ❌       | Detailed job description and responsibilities.                             |
+| `requirements` | string        | ❌       | Job requirements and qualifications.                                       |
 
 ### Example cURL
 
@@ -450,8 +452,9 @@ curl -X POST \
   http://localhost:8000/api/v1/target-job/ \
   -H "Content-Type: application/json" \
   -d '{
-    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "id": "f99d744c-7bc3-4d0d-ae31-bd6ef42929b3",
     "title": "Software Engineer",
+    "answer_type": "text",
     "description": "Full-stack software engineer position requiring Python, Django, and React experience.",
     "requirements": "Bachelor degree in Computer Science, 3+ years experience in web development."
   }'
@@ -464,7 +467,16 @@ curl -X POST \
 ```json
 {
   "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
-  "message": "Target job saved successfully"
+  "message": "Target job and answer type saved successfully",
+  "answer_type": "video"
+}
+```
+
+#### Invalid answer_type - `400 Bad Request`
+
+```json
+{
+  "error": "answer_type must be either 'text' or 'video'"
 }
 ```
 
@@ -640,7 +652,109 @@ curl -X POST \
 
 ---
 
-## 📝 Get Feedback
+## � Upload Video Interview
+
+### Description
+
+Allows users to upload video responses for their interview questions. Videos must be associated with a valid `doc_id` and are limited to 75MB in size. The uploaded video is stored in the media directory and can be processed for transcription and analysis.
+
+**✅ Status**: Fully implemented with audio extraction capabilities
+
+### Endpoint
+
+```text
+POST /api/v1/upload-video/
+```
+
+### Request
+
+#### Content-Type
+
+```text
+multipart/form-data
+```
+
+#### Body Parameters
+
+| Field    | Type          | Required | Description                                              |
+| -------- | ------------- | -------- | -------------------------------------------------------- |
+| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+| `video`  | file          | ✅       | The video file to upload. Must be under 75MB.           |
+
+### Example cURL
+
+```bash
+curl -X POST \
+  http://localhost:8000/api/v1/upload-video/ \
+  -F "doc_id=12f4f5a8-9d20-43a6-8104-0b03cfd56ab3" \
+  -F "video=@interview_response.mp4"
+```
+
+### Response
+
+#### Success - `201 Created`
+
+```json
+{
+  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "message": "Video uploaded and saved successfully",
+  "filename": "interview_response.mp4",
+  "saved_as": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3_a1b2c3d4e5f6.mp4",
+  "size": 52428800,
+  "file_path": "videos/12f4f5a8-9d20-43a6-8104-0b03cfd56ab3_a1b2c3d4e5f6.mp4"
+}
+```
+
+#### File size too large - `413 Request Entity Too Large`
+
+```json
+{
+  "error": "File size too large. Maximum allowed size is 75MB, but received 120.5MB"
+}
+```
+
+#### Missing required fields - `400 Bad Request`
+
+```json
+{
+  "error": "doc_id is required"
+}
+```
+
+or
+
+```json
+{
+  "error": "video file is required"
+}
+```
+
+#### Resume not found - `404 Not Found`
+
+```json
+{
+  "error": "Resume not found"
+}
+```
+
+#### File save error - `500 Internal Server Error`
+
+```json
+{
+  "error": "Failed to save video file"
+}
+```
+
+### File Storage
+
+- **Directory**: Videos are stored in `MEDIA_ROOT/videos/`
+- **Naming**: Files are renamed using the pattern `{doc_id}_{uuid}.{extension}`
+- **Processing**: Videos are saved with chunked upload for efficient handling of large files
+- **Audio Extraction**: The system can extract audio from uploaded videos using FFmpeg for transcription
+
+---
+
+## �📝 Get Feedback
 
 ### Description
 
@@ -786,9 +900,11 @@ python manage.py test test.test_integration.IntegrationTest.test_complete_interv
 
 - `POST /api/v1/upload-resume/` - Upload PDF resume (< 5MB)
 - `POST /api/v1/get-keywords/` - Extract keywords from resume using OpenAI
-- `POST /api/v1/target-job/` - Save target job preferences
+- `POST /api/v1/get-grammar-results/` - Get grammar check results for resume
+- `POST /api/v1/target-job/` - Save target job preferences and answer type (text/video)
 - `POST /api/v1/get-questions/` - Generate AI-powered interview questions
 - `POST /api/v1/submit-answer/` - Submit answers to interview questions
+- `POST /api/v1/upload-video/` - Upload video interview responses (< 75MB)
 - `GET /api/v1/feedback/` - Get detailed AI feedback on answers
 - `GET /api/v1/debug/` - Debug information (development only)
 
@@ -800,10 +916,11 @@ python manage.py test test.test_integration.IntegrationTest.test_complete_interv
 
 ### 📋 Future Enhancements (Optional)
 
-- Video answer submission support
+- Advanced video transcription and analysis
+- Multi-language support for international candidates
 - Advanced knowledge graph integration
-- Multi-language support
-- Interview scheduling features
+- Interview scheduling and calendar features
+- Real-time video interview capabilities
 
 ---
 
