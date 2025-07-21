@@ -1,29 +1,55 @@
 import uuid
+
 from django.db import models
-from resume.models import Resume
 
 
 class InterviewSession(models.Model):
+    class Status(models.TextChoices):
+        PROCESSING = 'processing', 'Processing'
+        COMPLETE = 'complete', 'Complete'
+        FAILED = 'failed', 'Failed'
+    
+    class AnswerType(models.TextChoices):
+        TEXT = 'text', 'Text'
+        VIDEO = 'video', 'Video'
+
+    # Primary key - using doc_id as the primary identifier
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    resume = models.ForeignKey(Resume, on_delete=models.CASCADE, related_name='interview_sessions')
-    doc_id = models.UUIDField()  # Link to the doc_id from resume processing
+    
+    # Resume-related fields (moved from Resume model)
+    local_path = models.CharField(max_length=512, default='')  # e.g. "resumes/123e4567-e89b-12d3-a456-426614174000.pdf"
+    keywords = models.JSONField(default=list)  # stores like ["python", "django"]
+    target_job = models.CharField(max_length=255, blank=True, null=True)
+    answer_type = models.CharField(max_length=10, choices=AnswerType.choices, default=AnswerType.TEXT)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PROCESSING)
+    grammar_results = models.JSONField(blank=True, null=True)
+
+    # Technical interview fields
+    tech_question = models.CharField(max_length=1023, blank=True, null=True)
+    tech_answer = models.TextField(blank=True, null=True)
+    tech_feedback = models.TextField(blank=True, null=True)
+
+    # General interview fields
     questions = models.JSONField(default=list)  # ["Question 1?", "Question 2?", "Question 3?"]
-    answers = models.JSONField(default=list)    # ["Answer 1", "Answer 2", "Answer 3"]
+    answers = models.JSONField(default=list)  # ["Answer 1", "Answer 2", "Answer 3"]
     feedback = models.JSONField(default=dict)
-    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Timestamps
+    uploaded_at = models.DateTimeField(auto_now_add=True, null=True)  # When resume was uploaded
+    created_at = models.DateTimeField(auto_now_add=True)   # When session was created
     updated_at = models.DateTimeField(auto_now=True)
     is_completed = models.BooleanField(default=False)  # Track if all questions are answered
-    
+
     def __str__(self):
-        return f"Interview Session for resume {self.resume.id}"
-    
+        return f"Interview Session {self.id} ({self.status})"
+
     @property
     def progress(self):
         """Return the number of answered questions out of total questions"""
         answered_count = len([answer for answer in self.answers if answer and answer.strip()])
         total_count = len(self.questions)
         return f"{answered_count}/{total_count}"
-    
+
     @property
     def completion_percentage(self):
         """Return completion percentage"""
@@ -31,6 +57,6 @@ class InterviewSession(models.Model):
             return 0
         answered_count = len([answer for answer in self.answers if answer and answer.strip()])
         return round((answered_count / len(self.questions)) * 100, 1)
-    
+
     class Meta:
         ordering = ['-created_at']
