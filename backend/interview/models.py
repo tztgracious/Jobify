@@ -17,16 +17,17 @@ class InterviewSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # Resume-related fields (moved from Resume model)
-    local_path = models.CharField(max_length=512, default='')  # e.g. "resumes/123e4567-e89b-12d3-a456-426614174000.pdf"
+    resume_local_path = models.CharField(max_length=512, default='')  # e.g. "resumes/123e4567-e89b-12d3-a456-426614174000.pdf"
     keywords = models.JSONField(default=list)  # stores like ["python", "django"]
     target_job = models.CharField(max_length=255, blank=True, null=True)
     answer_type = models.CharField(max_length=10, choices=AnswerType.choices, default=AnswerType.TEXT)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PROCESSING)
+    resume_status = models.CharField(max_length=20, choices=Status.choices, default=Status.PROCESSING)
     grammar_results = models.JSONField(blank=True, null=True)
 
+    question_status = models.CharField(max_length=20, choices=Status.choices, default=Status.PROCESSING)
     # Technical interview fields
-    tech_question = models.CharField(max_length=1023, blank=True, null=True)
-    tech_answer = models.TextField(blank=True, null=True)
+    tech_questions = models.JSONField(default=list)  # ["Tech Question 1?", "Tech Question 2?", "Tech Question 3?"]
+    tech_answers = models.JSONField(default=list)  # ["Tech Answer 1", "Tech Answer 2", "Tech Answer 3"]
     tech_feedback = models.TextField(blank=True, null=True)
 
     # General interview fields
@@ -41,7 +42,7 @@ class InterviewSession(models.Model):
     is_completed = models.BooleanField(default=False)  # Track if all questions are answered
 
     def __str__(self):
-        return f"Interview Session {self.id} ({self.status})"
+        return f"Interview Session {self.id} ({self.resume_status})"
 
     @property
     def progress(self):
@@ -57,6 +58,21 @@ class InterviewSession(models.Model):
             return 0
         answered_count = len([answer for answer in self.answers if answer and answer.strip()])
         return round((answered_count / len(self.questions)) * 100, 1)
+
+    @property
+    def tech_progress(self):
+        """Return the number of answered technical questions out of total technical questions"""
+        answered_count = len([answer for answer in self.tech_answers if answer and answer.strip()])
+        total_count = len(self.tech_questions)
+        return f"{answered_count}/{total_count}"
+
+    @property
+    def tech_completion_percentage(self):
+        """Return technical questions completion percentage"""
+        if not self.tech_questions:
+            return 0
+        answered_count = len([answer for answer in self.tech_answers if answer and answer.strip()])
+        return round((answered_count / len(self.tech_questions)) * 100, 1)
 
     class Meta:
         ordering = ['-created_at']
