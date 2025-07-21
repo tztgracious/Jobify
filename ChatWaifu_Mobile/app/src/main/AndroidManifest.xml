@@ -49,6 +49,9 @@
         <activity
             android:name=".ui.questions.VideoAnswerActivity" />
         <activity
+            android:name=".ui.solution.SolutionActivity"
+            android:exported="false" />
+        <activity
             android:name=".ChatActivity"
             android:exported="true"
             android:screenOrientation="portrait" />
