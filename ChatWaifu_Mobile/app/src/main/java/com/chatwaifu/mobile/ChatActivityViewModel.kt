@@ -107,8 +107,7 @@ class ChatActivityViewModel : ViewModel() {
                 chatStatusLiveData.postValue(ChatStatus.FETCH_INPUT)
                 val input = fetchInput()
                 assistantMsgManager.insertUserMessage(input)
-                // 先显示用户输入内容在对话框
-                sendMineMsgUIState(input)
+                // sendMineMsgUIState(input) // 不再显示用户输入内容
                 ////////////////////////////
                 // 不再连接GPT，直接用模拟问题
                 chatStatusLiveData.postValue(ChatStatus.SEND_REQUEST)

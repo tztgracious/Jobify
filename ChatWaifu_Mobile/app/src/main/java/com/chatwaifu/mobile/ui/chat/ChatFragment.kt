@@ -122,7 +122,6 @@ class ChatFragment : Fragment() {
                         sendMessageTitle = sendMessageTitle,
                         sendMessageContent = sendMessageContent,
                         onSendMsgButtonClick = {
-                            activityViewModel.sendMineMsgUIState(it)
                             onSendMessage(it)
                         },
                         chatActivityViewModel = activityViewModel,
