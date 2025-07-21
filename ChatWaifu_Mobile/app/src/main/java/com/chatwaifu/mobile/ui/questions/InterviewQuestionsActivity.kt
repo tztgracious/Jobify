@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.chatwaifu.mobile.R
 import com.chatwaifu.mobile.databinding.ActivityInterviewQuestionsBinding
 import com.google.android.material.snackbar.Snackbar
+import android.os.CountDownTimer
+import android.widget.Toast
 
 class InterviewQuestionsActivity : AppCompatActivity() {
 
@@ -21,14 +23,30 @@ class InterviewQuestionsActivity : AppCompatActivity() {
     )
     private var currentIndex = 0
     private val answers = mutableListOf<String>()
+    private var answerTimer: CountDownTimer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityInterviewQuestionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val answerType = intent.getStringExtra("answer_type")
+        if (answerType == "video") {
+            // 跳转到视频回答界面
+            val docId = intent.getStringExtra("doc_id")
+            val keywords = intent.getStringArrayExtra("keywords")
+            val intent = Intent(this, com.chatwaifu.mobile.ui.questions.VideoAnswerActivity::class.java).apply {
+                putExtra("doc_id", docId)
+                putExtra("keywords", keywords)
+            }
+            startActivity(intent)
+            finish()
+            return
+        }
+
         setupUI()
         showCurrentQuestion()
+        startAnswerTimer()
     }
 
     private fun setupUI() {
@@ -56,6 +74,7 @@ class InterviewQuestionsActivity : AppCompatActivity() {
         if (currentIndex < questions.size - 1) {
             currentIndex++
             showCurrentQuestion()
+            startAnswerTimer()
         } else {
             // 跳转到TipsActivity并传递答案
             val intent = Intent(this, TipsActivity::class.java)
@@ -63,6 +82,28 @@ class InterviewQuestionsActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         }
+    }
+
+    private fun startAnswerTimer() {
+        binding.tvTimer?.visibility = View.VISIBLE
+        binding.tvTimer?.text = "60s"
+        answerTimer?.cancel()
+        answerTimer = object : CountDownTimer(60_000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                binding.tvTimer?.text = "${millisUntilFinished / 1000}s"
+            }
+            override fun onFinish() {
+                binding.tvTimer?.text = "0s"
+                binding.etAnswer.isEnabled = false
+                binding.btnNext.isEnabled = false
+                Toast.makeText(this@InterviewQuestionsActivity, getString(R.string.time_up), Toast.LENGTH_SHORT).show()
+            }
+        }.start()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        answerTimer?.cancel()
     }
 
     private fun showSnackbar(message: String) {

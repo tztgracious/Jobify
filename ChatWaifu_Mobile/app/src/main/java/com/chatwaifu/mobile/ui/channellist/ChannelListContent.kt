@@ -68,14 +68,7 @@ fun ChannelListContent(
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = {
-            ChannelNameBar(
-                channelName = "Character List",
-                onNavIconPressed = onNavIconPressed,
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        // Exclude ime and navigation bar padding so this can be added by the UserInput composable
+        // 移除topBar参数，不显示顶部bar
         contentWindowInsets = ScaffoldDefaults
             .contentWindowInsets
             .exclude(WindowInsets.navigationBars)

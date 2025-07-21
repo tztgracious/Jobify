@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.CloseFullscreen
+import androidx.compose.material.icons.outlined.Pinch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,19 +91,16 @@ fun ChatContentScaffold(
         onErrorOccur("sound generate failed....")
     }
     val chatStatusHint = when (chatStatusUILiveData.value) {
-        ChatActivityViewModel.ChatStatus.GENERATE_SOUND -> {
-            // Check if running in emulator
-            if (isEmulator()) {
-                stringResource(id = R.string.emulator_tts_disabled)
-            } else {
-                stringResource(id = R.string.chat_status_hint_generate_sound)
-            }
+        ChatActivityViewModel.ChatStatus.SEND_REQUEST -> {
+            stringResource(id = R.string.chat_status_hint_send_request)
         }
 
-        ChatActivityViewModel.ChatStatus.INTERVIEW_MODE -> {
-            val currentQuestion = chatActivityViewModel.getCurrentInterviewQuestionIndex() + 1
-            val totalQuestions = 3
-            stringResource(id = R.string.chat_status_hint_interview_mode, currentQuestion, totalQuestions)
+        ChatActivityViewModel.ChatStatus.GENERATE_SOUND -> {
+            stringResource(id = R.string.chat_status_hint_generate_sound)
+        }
+
+        ChatActivityViewModel.ChatStatus.TRANSLATE -> {
+            stringResource(id = R.string.chat_status_hint_translate)
         }
 
         else -> {
@@ -114,7 +112,7 @@ fun ChatContentScaffold(
         topBar = {
             ChannelNameBar(
                 channelName = chatTitle,
-                onNavIconPressed = onNavIconPressed,
+                // 不传递onNavIconPressed，不显示左上角按钮
                 scrollBehavior = scrollBehavior,
                 externalActions = {}
             )
@@ -132,8 +130,8 @@ fun ChatContentScaffold(
                 .padding(paddingValues)
         ) {
             ChatContent(
-                originAndroidView,
-                originAndroidViewUpdate,
+                originAndroidView = originAndroidView,
+                originAndroidViewUpdate = originAndroidViewUpdate,
                 chatTitle = sendMessageTitle,
                 chatContent = sendMessageContent,
                 chatStatus = chatStatusHint,
@@ -142,7 +140,8 @@ fun ChatContentScaffold(
                 onTouchEnd = onTouchEnd,
                 onRecordStart = onRecordStart,
                 onRecordEnd = onRecordEnd,
-                onResetModel = onResetModel
+                onResetModel = onResetModel,
+                chatActivityViewModel = chatActivityViewModel // 关键参数补全
             )
         }
     }
@@ -160,13 +159,15 @@ fun ChatContent(
     onTouchEnd: () -> Unit = {},
     onResetModel: () -> Unit = {},
     onRecordStart: () -> Unit = {},
-    onRecordEnd: () -> Unit = {}
+    onRecordEnd: () -> Unit = {},
+    chatActivityViewModel: ChatActivityViewModel
 ) {
-
     var touchModeEnable by rememberSaveable { mutableStateOf(false) }
     var currentInputSelector by rememberSaveable { mutableStateOf(InputSelector.NONE) }
+    val isReady by chatActivityViewModel.isReady.observeAsState(false)
+    Column(modifier = Modifier.fillMaxSize()) {
     Box(modifier = Modifier
-        .fillMaxSize()
+            .weight(1f)
         .clickable(
             enabled = !touchModeEnable,
             onClick = {
@@ -174,20 +175,9 @@ fun ChatContent(
             }
         ), contentAlignment = Alignment.BottomCenter) {
         AndroidView(
-            modifier = Modifier.fillMaxSize(), // Occupy the max size in the Compose UI tree
-            factory = { context ->
-                // Creates view
-                originAndroidView(context)
-            },
-            update = { view ->
-                // View's been inflated or state read in this block has been updated
-                // Add logic here if necessary
-
-                // As selectedItem is read here, AndroidView will recompose
-                // whenever the state changes
-                // Example of Compose -> View communication
-                originAndroidViewUpdate(view)
-            }
+                modifier = Modifier.fillMaxSize(),
+                factory = { context -> originAndroidView(context) },
+                update = { view -> originAndroidViewUpdate(view) }
         )
         Column(modifier = Modifier) {
             if (touchModeEnable) {
@@ -239,7 +229,36 @@ fun ChatContent(
                     )
                 }
             }
-
+            }
+            // 新增：右下角悬浮缩放按钮
+            androidx.compose.material3.FloatingActionButton(
+                onClick = {
+                    touchModeEnable = true
+                    onTouchStart()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Outlined.Pinch,
+                    contentDescription = "缩放人物"
+                )
+            }
+            // Ready按钮悬浮在底部居中
+            if (!isReady) {
+                androidx.compose.material3.Button(
+                    onClick = { chatActivityViewModel.onReady() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 24.dp)
+                ) {
+                    androidx.compose.material3.Text("Ready")
+                }
+            }
+        }
+        // 底部输入区域
+        if (isReady) {
             AnimatedVisibility(visible = !touchModeEnable) {
                 UserInput(
                     onMessageSent = onSendMsgButtonClick,
@@ -332,11 +351,14 @@ fun TouchIndicator(
 fun ChatContentPreview() {
     ChatWaifu_MobileTheme {
         val context = LocalContext.current
-        ChatContent(originAndroidView = {
+        ChatContent(
+            originAndroidView = {
             View(context).apply {
                 setBackgroundColor(resources.getColor(androidx.appcompat.R.color.material_blue_grey_800))
             }
-        })
+            },
+            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+        )
     }
 }
 
@@ -352,7 +374,18 @@ fun ChatContentScaffoldPreview() {
                     setBackgroundColor(resources.getColor(androidx.appcompat.R.color.material_blue_grey_800))
                 }
             },
-            chatActivityViewModel = viewModel()
+            onNavIconPressed = {},
+            chatTitle = "Interviewer",
+            sendMessageTitle = "Interviewer",
+            sendMessageContent = "",
+            onSendMsgButtonClick = {},
+            onErrorOccur = {},
+            onTouchStart = {},
+            onTouchEnd = {},
+            onResetModel = {},
+            onRecordStart = {},
+            onRecordEnd = {},
+            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
         )
     }
 }
@@ -368,7 +401,18 @@ fun ChatContentScaffoldPreviewDark() {
                     setBackgroundColor(resources.getColor(androidx.appcompat.R.color.material_blue_grey_800))
                 }
             },
-            chatActivityViewModel = viewModel()
+            onNavIconPressed = {},
+            chatTitle = "Interviewer",
+            sendMessageTitle = "Interviewer",
+            sendMessageContent = "",
+            onSendMsgButtonClick = {},
+            onErrorOccur = {},
+            onTouchStart = {},
+            onTouchEnd = {},
+            onResetModel = {},
+            onRecordStart = {},
+            onRecordEnd = {},
+            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
         )
     }
 }
@@ -377,15 +421,4 @@ fun ChatContentScaffoldPreviewDark() {
 @Composable
 fun TouchIndicatorPreview() {
     TouchIndicator()
-}
-
-private fun isEmulator(): Boolean {
-    return (android.os.Build.FINGERPRINT.startsWith("generic")
-            || android.os.Build.FINGERPRINT.startsWith("unknown")
-            || android.os.Build.MODEL.contains("google_sdk")
-            || android.os.Build.MODEL.contains("Emulator")
-            || android.os.Build.MODEL.contains("Android SDK built for x86")
-            || android.os.Build.MANUFACTURER.contains("Genymotion")
-            || (android.os.Build.BRAND.startsWith("generic") && android.os.Build.DEVICE.startsWith("generic"))
-            || "google_sdk" == android.os.Build.PRODUCT)
 }

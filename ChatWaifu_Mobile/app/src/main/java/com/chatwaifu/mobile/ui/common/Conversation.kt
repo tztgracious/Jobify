@@ -117,6 +117,7 @@ fun ConversationContent(
                 channelName = uiState.channelName,
                 onNavIconPressed = onNavIconPressed,
                 scrollBehavior = scrollBehavior,
+                showNavIcon = false // 传递 false 隐藏按钮
             )
         },
         // Exclude ime and navigation bar padding so this can be added by the UserInput composable
@@ -164,7 +165,8 @@ fun ChannelNameBar(
     modifier: Modifier = Modifier,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onNavIconPressed: () -> Unit = { },
-    externalActions: @Composable RowScope.()-> Unit = {}
+    externalActions: @Composable RowScope.()-> Unit = {},
+    showNavIcon: Boolean = true // 新增参数，默认显示
 ) {
     var functionalityNotAvailablePopupShown by remember { mutableStateOf(false) }
     if (functionalityNotAvailablePopupShown) {
@@ -185,7 +187,8 @@ fun ChannelNameBar(
         },
         actions = {
             externalActions()
-        }
+        },
+        showNavIcon = showNavIcon // 传递参数，类型一致
     )
 }
 

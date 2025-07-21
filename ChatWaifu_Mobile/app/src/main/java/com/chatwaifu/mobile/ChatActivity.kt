@@ -40,13 +40,7 @@ class ChatActivity : AppCompatActivity() {
             }
         )
         chatViewModel.refreshAllKeys()
-        
-        // Check if we're entering from interview flow
-        val isInterviewMode = intent.getBooleanExtra("interview_mode", false)
-        val docId = intent.getStringExtra("doc_id")
-        if (isInterviewMode) {
-            chatViewModel.setInterviewMode(true, docId)
-        }
+        chatViewModel.mainLoop()
     }
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -62,6 +56,13 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onSupportNavigateUp(): Boolean {
         return findNavController().navigateUp() || super.onSupportNavigateUp()
+    }
+
+    override fun onBackPressed() {
+        val intent = android.content.Intent(this, com.chatwaifu.mobile.ui.answertype.AnswerTypeSelectActivity::class.java)
+        intent.flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+        startActivity(intent)
+        finish()
     }
 
     private fun findNavController(): NavController {

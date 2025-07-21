@@ -37,35 +37,15 @@ import kotlin.coroutines.resume
 class ChatActivityViewModel : ViewModel() {
     companion object {
         private const val TAG = "ChatActivityViewModel"
-        
-        // Interview mode constants
-        private const val INTERVIEW_QUESTIONS_COUNT = 3
-        private const val EXTRA_INTERVIEW_MODE = "interview_mode"
     }
 
     enum class ChatStatus {
         DEFAULT,
-        INTERVIEW_MODE,
+        FETCH_INPUT,
+        SEND_REQUEST,
+        TRANSLATE,
         GENERATE_SOUND,
     }
-
-    // Interview mode state
-    private var isInterviewMode: Boolean = false
-    private var currentInterviewQuestionIndex: Int = 0
-    private var currentDocId: String? = null
-    private val interviewQuestions = listOf(
-        "Please introduce yourself and tell me about your background.",
-        "What are your greatest strengths and how would they benefit this role?",
-        "Describe a challenging project you worked on and how you overcame obstacles."
-    )
-    private val interviewAnswers = mutableListOf<String>()
-    private val interviewTips = "Thank you for completing the interview! Here are some tips for your next interview:\n\n" +
-            "• Practice your responses to common questions\n" +
-            "• Research the company and role thoroughly\n" +
-            "• Prepare specific examples from your experience\n" +
-            "• Ask thoughtful questions about the position\n" +
-            "• Follow up with a thank-you email after the interview\n\n" +
-            "Good luck with your job search!"
 
     val drawerShouldBeOpened = MutableLiveData<Boolean>()
     val chatStatusLiveData = MutableLiveData<ChatStatus>().apply { value = ChatStatus.DEFAULT }
@@ -79,13 +59,15 @@ class ChatActivityViewModel : ViewModel() {
     val generateSoundLiveData = MutableLiveData<Boolean>()
     val initModelResultLiveData = MutableLiveData<List<ChannelListBean>>()
     val loadingUILiveData = MutableLiveData<Pair<Boolean, String>>()
+    val isReady = MutableLiveData<Boolean>(false)
 
     var currentLive2DModelPath: String = ""
     var currentLive2DModelName: String = ""
     var currentVITSModelName: String = ""
-    var needTranslate: Boolean = true
+    // var needTranslate: Boolean = true // 不再需要翻译
     var needChatGPTProxy: Boolean = false
 
+    private var inputFunc: ((input: String) -> Unit)? = null
     private val chatGPTNetService: ChatGPTNetService? by lazy {
         ChatGPTNetService(ChatWaifuApplication.context)
     }
@@ -107,131 +89,75 @@ class ChatActivityViewModel : ViewModel() {
     private val assistantMsgManager: AssistantMessageManager by lazy {
         AssistantMessageManager(ChatWaifuApplication.context)
     }
-    private var translate: ITranslate? = null
-
-    // Interview mode functions
-    fun setInterviewMode(enabled: Boolean, docId: String? = null) {
-        Log.d(TAG, "setInterviewMode called with enabled: $enabled, docId: $docId")
-        isInterviewMode = enabled
-        currentDocId = docId
-        
-        if (enabled) {
-            currentInterviewQuestionIndex = 0
-            interviewAnswers.clear()
-            // Ensure we start with a clean state
-            chatStatusLiveData.postValue(ChatStatus.INTERVIEW_MODE)
-            Log.d(TAG, "Interview mode enabled, starting interview")
-            // Start with first question
-            startInterview()
-        } else {
-            chatStatusLiveData.postValue(ChatStatus.DEFAULT)
-            Log.d(TAG, "Interview mode disabled")
-        }
-    }
-
-    fun isInInterviewMode(): Boolean = isInterviewMode
-
-    fun getCurrentInterviewQuestionIndex(): Int = currentInterviewQuestionIndex
-
-    private fun startInterview() {
-        Log.d(TAG, "startInterview called, currentIndex: $currentInterviewQuestionIndex, questions size: ${interviewQuestions.size}")
-        if (currentInterviewQuestionIndex < interviewQuestions.size) {
-            val question = interviewQuestions[currentInterviewQuestionIndex]
-            Log.d(TAG, "Sending question: $question")
-            sendInterviewQuestion(question)
-        } else {
-            Log.d(TAG, "No more questions to send")
-        }
-    }
-
-    private fun sendInterviewQuestion(question: String) {
-        Log.d(TAG, "sendInterviewQuestion called with: $question")
-        CoroutineScope(Dispatchers.Main).launch {
-            Log.d(TAG, "Emitting question to UI")
-            _chatContentUIFlow.emit(
-                ChatDialogContentUIState(
-                    isFromMe = false,
-                    chatContent = question
-                )
-            )
-        }
-        
-        // In emulator, skip TTS completely
-        if (isEmulator()) {
-            Log.d(TAG, "Emulator detected, skipping TTS for interview question")
-            return
-        }
-        
-        // Generate and play TTS for the question
-        Log.d(TAG, "Setting status to GENERATE_SOUND")
-        chatStatusLiveData.postValue(ChatStatus.GENERATE_SOUND)
-        Log.d(TAG, "Calling generateAndPlaySound")
-        generateAndPlaySound(question)
-    }
-
-    fun handleInterviewResponse(userAnswer: String) {
-        if (!isInterviewMode) return
-        
-        // Save user's answer
-        interviewAnswers.add(userAnswer)
-        
-        // Move to next question or finish interview
-        currentInterviewQuestionIndex++
-        
-        if (currentInterviewQuestionIndex < interviewQuestions.size) {
-            // Send next question
-            val nextQuestion = interviewQuestions[currentInterviewQuestionIndex]
-            sendInterviewQuestion(nextQuestion)
-        } else {
-            // Interview completed, send tips
-            finishInterview()
-        }
-    }
-
-    private fun finishInterview() {
-        Log.d(TAG, "finishInterview called")
-        CoroutineScope(Dispatchers.Main).launch {
-            Log.d(TAG, "Emitting tips to UI")
-            _chatContentUIFlow.emit(
-                ChatDialogContentUIState(
-                    isFromMe = false,
-                    chatContent = interviewTips
-                )
-            )
-        }
-        
-        // In emulator, skip TTS completely
-        if (isEmulator()) {
-            Log.d(TAG, "Emulator detected, skipping TTS for interview tips")
-            // Exit interview mode
-            isInterviewMode = false
-            chatStatusLiveData.postValue(ChatStatus.DEFAULT)
-            return
-        }
-        
-        // Generate and play TTS for tips
-        Log.d(TAG, "Setting status to GENERATE_SOUND for tips")
-        chatStatusLiveData.postValue(ChatStatus.GENERATE_SOUND)
-        Log.d(TAG, "Calling generateAndPlaySound for tips")
-        generateAndPlaySound(interviewTips)
-        
-        // Exit interview mode
-        isInterviewMode = false
-        chatStatusLiveData.postValue(ChatStatus.DEFAULT)
-    }
+    // private var translate: ITranslate? = null // 不再需要翻译
 
     fun refreshAllKeys() {
         sp.getString(Constant.SAVED_CHAT_KEY, null)?.let {
             chatGPTNetService?.setPrivateKey(it)
         }
-        val translateAppId = sp.getString(Constant.SAVED_TRANSLATE_APP_ID, null)
-        val translateKey = sp.getString(Constant.SAVED_TRANSLATE_KEY, null)
-        setBaiduTranslate(translateAppId ?: return, translateKey ?: return)
-        needTranslate = sp.getBoolean(Constant.SAVED_USE_TRANSLATE, true)
+        // 不再需要翻译相关配置
         needChatGPTProxy = sp.getBoolean(Constant.SAVED_USE_CHATGPT_PROXY, false)
         val proxyUrl = if(needChatGPTProxy) sp.getString(Constant.SAVED_USE_CHATGPT_PROXY_URL, null) else null
         chatGPTNetService?.updateRetrofit(proxyUrl)
     }
+
+    fun mainLoop() {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                chatStatusLiveData.postValue(ChatStatus.FETCH_INPUT)
+                val input = fetchInput()
+                assistantMsgManager.insertUserMessage(input)
+                // 先显示用户输入内容在对话框
+                sendMineMsgUIState(input)
+                ////////////////////////////
+                // 不再连接GPT，直接用模拟问题
+                chatStatusLiveData.postValue(ChatStatus.SEND_REQUEST)
+                val question = if (currentQuestionIndex < interviewQuestions.size) {
+                    interviewQuestions[currentQuestionIndex]
+                } else {
+                    "Thank you for your answer. The interview is over."
+                }
+                // 构造模拟的回复UI
+                val response = ChatGPTResponseData(
+                    choices = listOf(
+                        com.chatwaifu.chatgpt.ListBean(
+                            message = com.chatwaifu.chatgpt.ResponseInnerMessageBean(
+                                role = "assistant",
+                                content = question
+                            ),
+                            index = 0,
+                            finish_reason = null
+                        )
+                    ),
+                    errorMsg = null
+                )
+                assistantMsgManager.insertGPTMessage(response)
+                _chatContentUIFlow.emit(
+                    constructUIStateFromResponse(response)
+                )
+                chatStatusLiveData.postValue(ChatStatus.GENERATE_SOUND)
+                generateAndPlaySound(question)
+                currentQuestionIndex += 1
+            }
+        }
+    }
+
+    fun sendMessage(input: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            if (inputFunc != null) {
+                inputFunc?.invoke(input)
+            }
+        }
+    }
+
+    // private fun setBaiduTranslate(appid: String, privateKey: String) {
+    //     translate = BaiduTranslateService(
+    //         ChatWaifuApplication.context,
+    //         appid = appid,
+    //         privateKey = privateKey
+    //     )
+    // }
+
 
     fun initModel(context: Context) {
         initModelResultLiveData.postValue(emptyList())
@@ -240,7 +166,17 @@ class ChatActivityViewModel : ViewModel() {
             val finalModelList = mutableListOf<ChannelListBean>()
             localModelManager.initInnerModel(context, finalModelList)
             localModelManager.initExternalModel(context, finalModelList)
-            initModelResultLiveData.postValue(finalModelList)
+            // 自动选择 haru_greeter_t05
+            val haru = finalModelList.find { it.characterName == "haru_greeter_t05" }
+            if (haru != null) {
+                currentLive2DModelName = haru.characterName
+                currentLive2DModelPath = haru.characterPath
+                currentVITSModelName = haru.characterName
+                loadVitsModel(haru.characterVitsPath)
+                loadChatListCache(haru.characterName)
+                loadModelSystemSetting(haru.characterName)
+            }
+            // 不再通知UI显示角色列表
             loadingUILiveData.postValue(Pair(false, ""))
         }
         lipsValueHandler.initLipSync()
@@ -278,71 +214,52 @@ class ChatActivityViewModel : ViewModel() {
         )
     }
 
-    private suspend fun sendChatGPTRequest(
-        msg: String,
-        assistantList: List<String>
-    ): ChatGPTResponseData? {
+    private suspend fun fetchInput(): String {
         return suspendCancellableCoroutine {
-            chatGPTNetService?.setAssistantList(assistantList)
-            chatGPTNetService?.sendChatMessage(msg) { response ->
-                it.safeResume(response)
+            inputFunc = { input ->
+                it.safeResume(input)
             }
         }
     }
 
-    private suspend fun fetchTranslateIfNeed(responseText: String?): String? {
-        translate ?: return responseText
-        responseText ?: return null
-        if (!needTranslate) {
-            return responseText
-        }
-        chatStatusLiveData.postValue(ChatStatus.GENERATE_SOUND)
-        return suspendCancellableCoroutine {
-            translate?.getTranslateResult(responseText) { result ->
-                it.safeResume(result?.ifBlank { responseText } ?: responseText)
-            }
-        }
-    }
+    // private suspend fun sendChatGPTRequest(
+    //     msg: String,
+    //     assistantList: List<String>
+    // ): ChatGPTResponseData? {
+    //     return suspendCancellableCoroutine {
+    //         chatGPTNetService?.setAssistantList(assistantList)
+    //         chatGPTNetService?.sendChatMessage(msg) { response ->
+    //             it.safeResume(response)
+    //         }
+    //     }
+    // }
+
+    // private suspend fun fetchTranslateIfNeed(responseText: String?): String? {
+    //     translate ?: return responseText
+    //     responseText ?: return null
+    //     if (!needTranslate) {
+    //         return responseText
+    //     }
+    //     chatStatusLiveData.postValue(ChatStatus.TRANSLATE)
+    //     return suspendCancellableCoroutine {
+    //         translate?.getTranslateResult(responseText) { result ->
+    //             it.safeResume(result?.ifBlank { responseText } ?: responseText)
+    //         }
+    //     }
+    // }
 
     private fun generateAndPlaySound(needPlayText: String?) {
-        Log.d(TAG, "generateAndPlaySound called with text: $needPlayText")
-        Log.d(TAG, "Current chat status: ${chatStatusLiveData.value}")
-        
-        // Skip TTS in emulator environment
-        if (isEmulator()) {
-            Log.d(TAG, "Skipping TTS in emulator environment")
-            if (chatStatusLiveData.value == ChatStatus.GENERATE_SOUND) {
-                Log.d(TAG, "Setting status to DEFAULT in emulator")
-                chatStatusLiveData.postValue(ChatStatus.DEFAULT)
-            }
-            return
-        }
-        
-        Log.d(TAG, "Calling vitsHelper.generateAndPlay")
         vitsHelper.generateAndPlay(text = needPlayText,
             targetSpeakerId = localModelManager.getVITSSpeakerId(currentLive2DModelName),
             callback = { isSuccess ->
-            Log.d(TAG, "generate sound callback: $isSuccess")
+            Log.d(TAG, "generate sound $isSuccess")
             if (chatStatusLiveData.value == ChatStatus.GENERATE_SOUND) {
-                Log.d(TAG, "Setting status to DEFAULT after TTS")
                 chatStatusLiveData.postValue(ChatStatus.DEFAULT)
             }},
             forwardResult = {
-                Log.d(TAG, "TTS forwardResult received")
                 lipsValueHandler.sendLipsValues(it)
             }
         )
-    }
-
-    private fun isEmulator(): Boolean {
-        return (android.os.Build.FINGERPRINT.startsWith("generic")
-                || android.os.Build.FINGERPRINT.startsWith("unknown")
-                || android.os.Build.MODEL.contains("google_sdk")
-                || android.os.Build.MODEL.contains("Emulator")
-                || android.os.Build.MODEL.contains("Android SDK built for x86")
-                || android.os.Build.MANUFACTURER.contains("Genymotion")
-                || (android.os.Build.BRAND.startsWith("generic") && android.os.Build.DEVICE.startsWith("generic"))
-                || "google_sdk" == android.os.Build.PRODUCT)
     }
 
     private fun constructUIStateFromResponse(response: ChatGPTResponseData?): ChatDialogContentUIState {
@@ -366,11 +283,6 @@ class ChatActivityViewModel : ViewModel() {
                 )
             )
         }
-        
-        // Handle interview mode
-        if (isInterviewMode) {
-            handleInterviewResponse(content)
-        }
     }
 
     override fun onCleared() {
@@ -387,13 +299,45 @@ class ChatActivityViewModel : ViewModel() {
         drawerShouldBeOpened.value = false
     }
 
-    private fun setBaiduTranslate(appid: String, privateKey: String) {
-        translate = BaiduTranslateService(
-            ChatWaifuApplication.context,
-            appid = appid,
-            privateKey = privateKey
-        )
+    fun onReady() {
+        isReady.postValue(true)
+        // 直接显示第一个问题
+        viewModelScope.launch(Dispatchers.IO) {
+            val question = if (currentQuestionIndex < interviewQuestions.size) {
+                interviewQuestions[currentQuestionIndex]
+            } else {
+                "Thank you for your answer. The interview is over."
+            }
+            val response = com.chatwaifu.chatgpt.ChatGPTResponseData(
+                choices = listOf(
+                    com.chatwaifu.chatgpt.ListBean(
+                        message = com.chatwaifu.chatgpt.ResponseInnerMessageBean(
+                            role = "assistant",
+                            content = question
+                        ),
+                        index = 0,
+                        finish_reason = null
+                    )
+                ),
+                errorMsg = null
+            )
+            assistantMsgManager.insertGPTMessage(response)
+            _chatContentUIFlow.emit(
+                constructUIStateFromResponse(response)
+            )
+            chatStatusLiveData.postValue(ChatStatus.GENERATE_SOUND)
+            generateAndPlaySound(question)
+            currentQuestionIndex = 1
+        }
     }
+
+    // 模拟后端面试官问题
+    private val interviewQuestions = listOf(
+        "Please introduce yourself and tell me about your background.",
+        "What are your greatest strengths and how would they benefit this role?",
+        "Describe a challenging project you worked on and how you overcame obstacles."
+    )
+    private var currentQuestionIndex = 0
 }
 
 fun <T> CancellableContinuation<T>.safeResume(value: T) {
