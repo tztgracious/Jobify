@@ -59,7 +59,7 @@
     <string name="author_me">me</string>
     <string name="now">8:30 PM</string>
     <string name="members">%d members</string>
-    <string name="textfield_hint">Type your msg here…</string>
+    <string name="textfield_hint">Type your answer here</string>
     <string name="emojis_label">Emojis</string>
     <string name="stickers_label">Stickers</string>
 
@@ -100,7 +100,7 @@
     <string name="chat_log_loading_hint">Loading…</string>
     <string name="chat_log_empty_hint">Can\'t find any chat log :(</string>
 
-    <string name="sample_very_long_str">example contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample content</string>
+    <string name="sample_very_long_str">example contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample contentexample content</string>
     <string name="title_activity_text">TextActivity</string>
     
     <!-- New string resources -->
@@ -153,4 +153,15 @@
     <string name="interview_tips_title">Interview Tips</string>
     <string name="interview_question_prefix">Question %d of %d</string>
     <string name="emulator_tts_disabled">TTS disabled in emulator</string>
+    <!-- AnswerTypeSelectActivity 相关 -->
+    <string name="select_answer_type">Please select your answer type</string>
+    <string name="text_answer">Text Answer</string>
+    <string name="video_answer">Video Answer</string>
+    <string name="permission_denied">Camera and microphone permissions are required for video answer.</string>
+    <string name="start_recording">Start Recording</string>
+    <string name="stop_recording">Stop</string>
+    <string name="finish">Finish</string>
+    <string name="video_saved">Video saved!</string>
+    <string name="video_error">Video recording error</string>
+    <string name="time_up">Time is up!</string>
 </resources>

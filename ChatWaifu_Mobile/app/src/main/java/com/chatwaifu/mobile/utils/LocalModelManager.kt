@@ -163,15 +163,12 @@ class LocalModelManager() {
             Constant.LOCAL_MODEL_YUUKA -> {
                 list = listOf(0f, -0.6f, 4f)
             }
-
             Constant.LOCAL_MODEL_ATRI -> {
-                list = listOf(0f, -0.6f, 3f)
+                list = listOf(-0.7f, -0.6f, 7.5f) // 左移并放大ATRI（haru_greeter_t05）
             }
-
             Constant.LOCAL_MODEL_AMADEUS -> {
                 list = listOf(0f, 0f, 2f)
             }
-
             else -> {
                 list = listOf(0f, 0f, 1f)
             }

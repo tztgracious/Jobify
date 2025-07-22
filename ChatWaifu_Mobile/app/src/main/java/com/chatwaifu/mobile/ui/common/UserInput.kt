@@ -378,51 +378,14 @@ private fun UserInputSelector(
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        InputSelectorButton(
-            onClick = { onSelectorChange(InputSelector.EMOJI) },
-            icon = Icons.Outlined.Mood,
-            selected = currentInputSelector == InputSelector.EMOJI,
-            description = stringResource(id = R.string.emoji_selector_bt_desc)
-        )
-//        InputSelectorButton(
-//            onClick = { onSelectorChange(InputSelector.DM) },
-//            icon = Icons.Outlined.AlternateEmail,
-//            selected = currentInputSelector == InputSelector.DM,
-//            description = stringResource(id = R.string.dm_desc)
+        //        InputSelectorButton(
+//            onClick = {
+//                onSelectorChange(InputSelector.MIC)
+//            },
+//            icon = Icons.Outlined.Mic,
+//            description = "",
+//            selected = currentInputSelector == InputSelector.MIC
 //        )
-//        InputSelectorButton(
-//            onClick = { onSelectorChange(InputSelector.PICTURE) },
-//            icon = Icons.Outlined.InsertPhoto,
-//            selected = currentInputSelector == InputSelector.PICTURE,
-//            description = stringResource(id = R.string.attach_photo_desc)
-//        )
-//        InputSelectorButton(
-//            onClick = { onSelectorChange(InputSelector.MAP) },
-//            icon = Icons.Outlined.Place,
-//            selected = currentInputSelector == InputSelector.MAP,
-//            description = stringResource(id = R.string.map_selector_desc)
-//        )
-//        InputSelectorButton(
-//            onClick = { onSelectorChange(InputSelector.PHONE) },
-//            icon = Icons.Outlined.Duo,
-//            selected = currentInputSelector == InputSelector.PHONE,
-//            description = stringResource(id = R.string.videochat_desc)
-//        )
-        InputSelectorButton(
-            onClick = { onSelectorChange(InputSelector.TOUCH) },
-            icon = Icons.Outlined.Pinch,
-            selected = currentInputSelector == InputSelector.TOUCH,
-            description = stringResource(id = R.string.chat_bar_start_touch)
-        )
-
-        InputSelectorButton(
-            onClick = {
-                onSelectorChange(InputSelector.MIC)
-            },
-            icon = Icons.Outlined.Mic,
-            description = "",
-            selected = currentInputSelector == InputSelector.MIC
-        )
 
         val border = if (!sendMessageEnabled) {
             BorderStroke(

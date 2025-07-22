@@ -39,22 +39,28 @@ fun ChatWaifuAppBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onNavIconPressed: () -> Unit = { },
     title: @Composable () -> Unit,
-    actions: @Composable RowScope.() -> Unit = {}
+    actions: @Composable RowScope.() -> Unit = {},
+    showNavIcon: Boolean = true
 ) {
-    CenterAlignedTopAppBar(
-        modifier = modifier,
-        actions = actions,
-        title = title,
-        scrollBehavior = scrollBehavior,
-        navigationIcon = {
-            ChatWaifuChatIcon(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clickable(onClick = onNavIconPressed)
-                    .padding(16.dp)
-            )
-        }
-    )
+    if (showNavIcon) {
+        CenterAlignedTopAppBar(
+            modifier = modifier,
+            actions = actions,
+            title = title,
+            scrollBehavior = scrollBehavior,
+            navigationIcon = {
+                // 已删除ChatWaifuChatIcon，保留空实现
+            }
+        )
+    } else {
+        CenterAlignedTopAppBar(
+            modifier = modifier,
+            actions = actions,
+            title = title,
+            scrollBehavior = scrollBehavior
+            // 不传递 navigationIcon 参数，彻底不显示
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
