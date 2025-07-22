@@ -31,7 +31,7 @@ class ResumeFlowTest(APITestCase):
         """Clean up uploaded files after each test"""
         resumes = Resume.objects.all()
         for resume in resumes:
-            file_path = os.path.join(settings.MEDIA_ROOT, resume.local_path)
+            file_path = os.path.join(settings.MEDIA_ROOT, resume.resume_local_path)
             if os.path.exists(file_path):
                 os.remove(file_path)
         Resume.objects.all().delete()
@@ -294,7 +294,7 @@ class ResumeFlowTest(APITestCase):
         # Verify file was saved correctly
         doc_id = response.data["doc_id"]
         resume = Resume.objects.get(id=doc_id)
-        self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, resume.local_path)))
+        self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, resume.resume_local_path)))
 
     def test_error_recovery_workflow(self):
         """Test the workflow when processing fails and recovers"""
