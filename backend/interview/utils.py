@@ -15,8 +15,7 @@ import uuid
 from django.conf import settings
 from jobify_backend.logger import logger
 from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
-
-
+    
 def get_questions_using_openai(session):
     target_job = session.target_job
     keywords = session.keywords
@@ -52,7 +51,6 @@ def get_questions_using_openai(session):
             ]
         })
     )
-    logger.info(f"OpenAI responsed.")
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
         questions = json.loads(response_text)
