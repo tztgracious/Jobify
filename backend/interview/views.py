@@ -11,7 +11,9 @@ from jobify_backend.logger import logger
 from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
 from resume.utils import get_session_by_id
 from .models import InterviewSession
-from .utils import get_questions_using_openai, get_feedback_using_openai_text
+from .utils import (get_questions_using_openai, get_feedback_using_openai_text, process_text_answer,
+                    process_video_answer, get_feedback_using_openai_video)
+
 
 @api_view(['POST'])
 def get_all_questions(request):
@@ -64,8 +66,9 @@ def get_all_questions(request):
     # Get interview questions
     interview_questions = session.questions or []
 
-    logger.info(f"Retrieved all questions for id: {session_id}, tech: {len(tech_questions)}, interview: {len(interview_questions)}")
-    
+    logger.info(
+        f"Retrieved all questions for id: {session_id}, tech: {len(tech_questions)}, interview: {len(interview_questions)}")
+
     return Response({
         "id": session_id,
         "finished": True,
@@ -75,6 +78,7 @@ def get_all_questions(request):
     }, status=status.HTTP_200_OK)
 
 
+@deprecated.deprecated(reason="Use get_all_questions instead")
 @api_view(['POST'])
 def get_tech_question(request):
     """
@@ -140,12 +144,14 @@ def submit_tech_answer(request):
     tech_questions = resume.tech_questions or []
     if question_index < 0 or question_index >= len(tech_questions):
         logger.warning(f"Invalid question_index {question_index} for id: {session_id}")
-        return Response({"error": f"Invalid question_index. Must be between 0 and {len(tech_questions) - 1}"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": f"Invalid question_index. Must be between 0 and {len(tech_questions) - 1}"},
+                        status=status.HTTP_400_BAD_REQUEST)
 
     # Validate that the question text matches
     if tech_questions[question_index] != tech_question:
         logger.warning(f"Question mismatch at index {question_index} for id: {session_id}")
-        return Response({"error": "Question text does not match the question at the specified index"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Question text does not match the question at the specified index"},
+                        status=status.HTTP_400_BAD_REQUEST)
 
     # Ensure tech_answers list is properly sized
     tech_answers = resume.tech_answers or []
@@ -166,6 +172,7 @@ def submit_tech_answer(request):
         "tech_question": tech_question,
         "tech_answer": tech_answer
     }, status=status.HTTP_200_OK)
+
 
 @deprecated.deprecated(reason="Use get_all_questions instead")
 @api_view(['POST'])
@@ -228,17 +235,26 @@ def get_interview_questions(request):
 def submit_interview_answer(request):
     """
     Submit an answer to a specific question in an interview session.
-    Expected payload: {
+    
+    For text answers, expected payload: {
         "id": "uuid",
-        "question_index": 0,  # Index of the question being answered (0-based)
+        "index": 0,  # Index of the question being answered (0-based)
+        "answer_type": "text",
         "question": "What are your biggest strengths?",  # The actual question text for validation
         "answer": "My answer to this question"
     }
+    
+    For video answers, expected form data:
+        - id: "uuid"
+        - index: 0
+        - answer_type: "video"
+        - question: "What are your biggest strengths?"
+        - video: <video file>
     """
     session_id = request.data.get('id')
-    question_index = request.data.get('question_index')
+    question_index = request.data.get('index')
     question_text = request.data.get('question', '').strip()
-    answer = request.data.get('answer', '').strip()
+    answer_type = request.data.get('answer_type', '').strip()
 
     if not session_id:
         logger.warning("submit_answer called without id")
@@ -252,9 +268,9 @@ def submit_interview_answer(request):
         logger.warning("submit_answer called without question text")
         return Response({"error": "question is required for validation"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not answer:
-        logger.warning("submit_answer called without valid answer")
-        return Response({"error": "answer is required and cannot be empty"}, status=status.HTTP_400_BAD_REQUEST)
+    if not answer_type:
+        logger.warning("submit_answer called without answer_type")
+        return Response({"error": "answer_type is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Find the interview session by id
     interview_session = InterviewSession.objects.filter(id=session_id).first()
@@ -269,75 +285,81 @@ def submit_interview_answer(request):
             "error": f"question_index must be between 0 and {len(interview_session.questions) - 1}"
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    # Validate that the question text matches the stored question
-    stored_question = interview_session.questions[question_index]
-    if question_text.strip() != stored_question.strip():
-        logger.warning(f"Question mismatch for id {session_id}, question_index {question_index}")
-        return Response({
-            "error": "Question text does not match the stored question",
-            "expected_question": stored_question,
-            "provided_question": question_text
-        }, status=status.HTTP_400_BAD_REQUEST)
+    # Process answer based on type using utility functions
+    if answer_type == 'text':
+        answer = request.data.get('answer', '')
+        if not answer:
+            logger.warning("submit_answer called without valid text answer")
+            return Response({"error": "answer is required and cannot be empty"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Initialize answers list if needed (pad with empty strings)
-    if len(interview_session.answers) < len(interview_session.questions):
-        interview_session.answers = [''] * len(interview_session.questions)
+        result = process_text_answer(session_id, question_index, question_text, answer, interview_session)
 
-    # Update the specific answer
-    interview_session.answers[question_index] = answer
+    elif answer_type == 'video':
+        video_file = request.FILES.get('video')
+        if not video_file:
+            logger.warning("submit_answer called without video file for video answer type")
+            return Response({"error": "video file is required for video answers"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Check if all questions are answered
-    answered_count = len([ans for ans in interview_session.answers if ans and ans.strip()])
-    is_completed = answered_count == len(interview_session.questions)
-    interview_session.is_completed = is_completed
+        result = process_video_answer(session_id, question_index, question_text, video_file, interview_session)
 
-    interview_session.save()
+    else:
+        logger.warning("submit_answer called with invalid answer_type")
+        return Response({"error": "answer_type must be either 'text' or 'video'"}, status=status.HTTP_400_BAD_REQUEST)
 
-    logger.info(f"Updated interview session for id {session_id} - answered question {question_index}")
+    # Handle the result from utility functions
+    if "error" in result:
+        return Response({"error": result["error"]}, status=result["status"])
 
-    return Response({
-        "id": session_id,
-        "message": f"Answer submitted for question {question_index + 1}",
-        "question": stored_question,
-        "answer": answer,
-        "progress": interview_session.progress,
-        "is_completed": is_completed
-    }, status=status.HTTP_200_OK)
+    # Remove status from result before returning
+    status_code = result.pop("status", 200)
+    return Response(result, status=status_code)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def get_feedback(request):
     """
     Retrieve interview feedback for a given id.
+    Payload: {
+        "id": "uuid",
+        "answer_type": "text" | "video,
+    }
 
+    Response: {
+        "id": "uuid",
+        "feedbacks": {
+            "tech_feedbacks": ["feedback1"],
+            "interview_feedbacks": ["feedback1", "feedback2", "feedback3"],
+        }
     """
-    session_id = request.query_params.get('id')
+    session_id = request.data.get('id')
     if not session_id:
         logger.warning("get_feedback called without id")
         return Response({"error": "id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    resume = get_session_by_id(session_id)
-    if not resume:
+    session = get_session_by_id(session_id)
+    if not session:
         logger.warning(f"Feedback questions requested for non-existent id: {session_id}")
         return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
-    # Find the interview session
-    interview_session = InterviewSession.objects.filter(id=session_id).first()
-    if not interview_session:
-        logger.warning(f"Interview session not found for id: {session_id}")
-        return Response({"error": "Interview session not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    feedback = get_feedback_using_openai_text(resume, interview_session)
-
-    if not feedback:
-        logger.warning(f"No feedback questions generated for session {interview_session.id}")
-        return Response({"error": "No feedback questions found"}, status=status.HTTP_404_NOT_FOUND)
-    interview_session.feedback = feedback
-    interview_session.save()
-
-    return Response({
-        "id": session_id,
-        "feedbacks": feedback
-    }, status=status.HTTP_200_OK)
+    answer_type = request.data.get('answer_type', '')
+    match answer_type:
+        case 'text':
+            feedback = get_feedback_using_openai_text(session)
+            if not feedback:
+                logger.warning(f"No feedback questions generated for session {session.id}")
+                return Response({"error": "No feedback questions found"}, status=status.HTTP_404_NOT_FOUND)
+            session.feedback = feedback
+            session.save()
+            return Response({
+                "id": session_id,
+                "feedbacks": feedback
+            }, status=status.HTTP_200_OK)
+        case 'video':
+            # TODO: implement video feedback
+            feedback = get_feedback_using_openai_video(session)
+            return Response({})
+        case _:
+            logger.warning("get_feedback called with invalid answer_type")
+            return Response({"error": "answer_type must be either 'text' or 'video'"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
