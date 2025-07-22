@@ -1,302 +1,326 @@
 # 🚀 Jobify Backend APIs
 
-## 📊 Current Status
+## 📊 Current Implementation Status
 
-**✅ All Core APIs Implemented and Tested**
+**✅ Fully Implemented & Tested APIs**
 
-The Jobify backend now provides a complete interview preparation workflow with:
+The Jobify backend provides a complete interview preparation workflow with:
 
-- **Resume Processing** - PDF upload and keyword extraction using OpenAI
-- **Job Targeting** - Customizable job preferences for tailored questions with text/video answer options
-- **AI Question Generation** - Personalized interview questions based on resume and target job
-- **Answer Submission** - Structured answer collection with progress tracking (text and video)
-- **Video Upload & Processing** - 75MB video upload with audio extraction capabilities
-- **Intelligent Feedback** - Detailed AI-powered feedback and suggestions
-- **Integration Testing** - Comprehensive end-to-end test coverage
+- **Resume Processing** - PDF upload and keyword extraction using OpenAI ✅
+- **Job Targeting** - Customizable job preferences for tailored questions ✅
+- **AI Question Generation** - Personalized interview questions based on resume and target job ✅
+- **Dual Answer Support** - Text and video answer submission with proper validation ✅
+- **Progress Tracking** - Interview session progress and completion status ✅
+- **Text Feedback** - AI-powered feedback for text-based answers ✅
+- **Resume Management** - Upload, validation, and cleanup operations ✅
 
-**🧪 Test Coverage**: 100% integration test coverage with automated workflow validation
+**⚠️ Partially Implemented APIs**
+
+- **Video Processing** - Video upload works, but advanced processing (transcription, feedback) is declared but not yet implemented
+- **Technical Questions** - Structure exists but proper tech question generation needs completion
+
+**🧪 Test Coverage**: 100% integration test coverage for implemented features
 
 ---
 
-### Description
+---
 
-Allows the user to upload a **resume PDF file** (less than 5MB).  
-The server generates a `doc_id` and validates the file type and size.
+## 📋 API Endpoints Overview
 
-### Endpoint
+### ✅ Fully Implemented Resume APIs
 
-```text
-POST /api/v1/upload-resume/
-```
+| Endpoint                       | Method | Purpose                                   | Status      |
+| ------------------------------ | ------ | ----------------------------------------- | ----------- |
+| `/api/v1/upload-resume/`       | POST   | Upload PDF resume (< 5MB)                 | ✅ Complete |
+| `/api/v1/get-keywords/`        | POST   | Extract keywords from resume using OpenAI | ✅ Complete |
+| `/api/v1/get-grammar-results/` | POST   | Get grammar check results for resume      | ✅ Complete |
+| `/api/v1/target-job/`          | POST   | Save target job preferences               | ✅ Complete |
+| `/api/v1/remove-resume/`       | POST   | Remove specific resume by ID              | ✅ Complete |
+| `/api/v1/cleanup-all-resumes/` | POST   | Clean up all resume data                  | ✅ Complete |
+| `/api/v1/debug/`               | GET    | Debug information (development only)      | ✅ Complete |
 
-### Request
+### ✅ Fully Implemented Interview APIs
 
-#### Content-Type
+| Endpoint                           | Method | Purpose                                          | Status               |
+| ---------------------------------- | ------ | ------------------------------------------------ | -------------------- |
+| `/api/v1/get-all-questions/`       | POST   | Get both tech and interview questions            | ✅ Complete          |
+| `/api/v1/submit-interview-answer/` | POST   | Submit text/video answers to interview questions | ✅ Complete          |
+| `/api/v1/feedback/`                | POST   | Get AI feedback on text answers                  | ✅ Complete for text |
 
-```text
-multipart/form-data
-```
+### ⚠️ Partially Implemented APIs
 
-#### Body Parameters
+| Endpoint                      | Method | Purpose                           | Status                                        |
+| ----------------------------- | ------ | --------------------------------- | --------------------------------------------- |
+| `/api/v1/submit-tech-answer/` | POST   | Submit technical question answers | ⚠️ Functional but needs proper tech questions |
+| `/api/v1/feedback/`           | POST   | Get AI feedback on video answers  | ⚠️ Declared but returns 501 Not Implemented   |
 
-| Field  | Type | Required | Description                                       |
-| ------ | ---- | -------- | ------------------------------------------------- |
-| `file` | file | ✅       | The resume PDF file to upload. Must be under 5MB. |
+### 🔧 Deprecated/Legacy APIs
 
-### Example cURL
+| Endpoint                           | Method | Purpose                          | Status                                  |
+| ---------------------------------- | ------ | -------------------------------- | --------------------------------------- |
+| `/api/v1/get-interview-questions/` | POST   | Get interview questions (legacy) | 🔧 Deprecated - use `get-all-questions` |
+
+### 🚫 Not Currently Available
+
+Authentication APIs are disabled in current configuration:
+
+- `/api/v1/signup/` - User registration
+- `/api/v1/login/` - User authentication
+- `/api/v1/logout/` - User logout
+
+---
+
+### Implementation Status Details
+
+#### ✅ Fully Functional
+
+- Resume upload and validation (PDF, 5MB limit)
+- Keyword extraction using OpenAI API
+- Grammar checking for resume content
+- Target job preference setting
+- AI-powered interview question generation
+- Text answer submission with validation
+- Video file upload with proper storage
+- Text-based feedback generation
+- Resume cleanup and management
+- Interview session progress tracking
+
+#### ⚠️ Declared but Not Yet Implemented
+
+- **Video Answer Feedback**: Function `get_feedback_using_openai_video()` exists but returns 501 Not Implemented
+- **Advanced Video Processing**: Audio extraction utilities exist but transcription/analysis not integrated
+- **Technical Questions**: Infrastructure exists but proper tech question generation needs completion
+
+#### 🔧 Areas for Enhancement
+
+- Video transcription integration with Deepgram API
+- Video-based feedback analysis
+- Enhanced technical question generation
+- Multi-language support for international candidates
+
+---
+
+## � Complete API Workflow
+
+### 1. Upload Resume
 
 ```bash
-curl -X POST \
-  http://localhost:8000/api/v1/upload-resume/ \
-  -F "file=@./backend/test/fixtures/resume_1.pdf"
-curl -k -X POST \
-  https://115.29.170.231/api/v1/upload-resume/ \
-  -F "file=@./backend/test/fixtures/resume_1.pdf"
+curl -X POST http://localhost:8000/api/v1/upload-resume/ \
+  -F "file=@resume.pdf"
 ```
 
-### Response
-
-#### Success - `201 Created`
+**Response:**
 
 ```json
 {
   "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
-  "valid_file": true,
-  "error_msg": null
+  "error_msg": "Resume uploaded successfully",
+  "valid_file": true
 }
 ```
 
-#### Validation failure - `400 Bad Request`
-
-```json
-{
-  "id": null,
-  "valid_file": false,
-  "error_msg": "File too big."
-}
-```
-
-or
-
-```json
-{
-  "id": null,
-  "valid_file": false,
-  "error_msg": "Not a PDF file."
-}
-```
-
----
-
-## 🔍 Get Resume Keywords
-
-### Description
-
-Fetches extracted **keywords** from the uploaded resume file identified by `doc_id`.
-
-### Endpoint
-
-```text
-POST /api/v1/get-keywords/
-```
-
-### Request
-
-#### Content-Type
-
-```text
-application/json
-```
-
-#### Body Parameters
-
-| Field    | Type          | Required | Description                                              |
-| -------- | ------------- | -------- | -------------------------------------------------------- |
-| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
-
-### Example cURL
+### 2. Get Keywords
 
 ```bash
-curl -X POST \
-  http://localhost:8000/api/v1/get-keywords/ \
+curl -X POST http://localhost:8000/api/v1/get-keywords/ \
   -H "Content-Type: application/json" \
-  -d '{"doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
+  -d '{"id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
 ```
 
-### Response
-
-#### Success - `200 OK`
+**Response:**
 
 ```json
 {
   "finished": true,
-  "keywords": ["c++", "java"],
+  "keywords": ["python", "django", "javascript", "react"],
   "error": ""
 }
 ```
 
-#### Processing not finished - `200 OK`
-
-```json
-{
-  "finished": false,
-  "keywords": [],
-  "error": ""
-}
-```
-
-#### Error occurred - `500 Internal Server Error`
-
-```json
-{
-  "finished": false,
-  "keywords": [],
-  "error": "Resume processing failed. Trying again."
-}
-```
-
-#### Resume not found - `404 Not Found`
-
-```json
-{
-  "finished": false,
-  "keywords": [],
-  "error": "Resume not found"
-}
-```
-
-#### Missing doc_id - `400 Bad Request`
-
-```json
-{
-  "finished": false,
-  "keywords": [],
-  "error": "doc_id is required"
-}
-```
-
----
-
-## 🐛 Debug Endpoint (Development Only)
-
-### Description
-
-Returns debug information about the server configuration. **Only available when DEBUG=True**.
-
-### Endpoint
-
-```text
-GET /api/v1/debug/
-```
-
-### Request
-
-No parameters required.
-
-### Example cURL
+### 3. Get Grammar Results
 
 ```bash
-curl -X GET http://localhost:8000/api/v1/debug/
+curl -X POST http://localhost:8000/api/v1/get-grammar-results/ \
+  -H "Content-Type: application/json" \
+  -d '{"id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
 ```
 
-### Response
-
-#### Success - `200 OK` (when DEBUG=True)
+**Response:**
 
 ```json
 {
-  "DEBUG": true,
-  "DATABASES": "sqlite3",
-  "KEYS": {
-    "OPENAI_API_KEY": "sk-..."
+  "finished": true,
+  "grammar_check": {
+    "language": "en-US",
+    "matches": []
+  },
+  "error": ""
+}
+```
+
+### 4. Set Target Job
+
+```bash
+curl -X POST http://localhost:8000/api/v1/target-job/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "title": "Software Engineer",
+    "answer_type": "text"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "message": "Target job and answer type saved successfully",
+  "answer_type": "text"
+}
+```
+
+### 5. Get All Questions
+
+```bash
+curl -X POST http://localhost:8000/api/v1/get-all-questions/ \
+  -H "Content-Type: application/json" \
+  -d '{"id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
+```
+
+**Response:**
+
+```json
+{
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "finished": true,
+  "tech_questions": ["What is your experience with Python?"],
+  "interview_questions": [
+    "Can you describe a challenging software development project you worked on?",
+    "What steps do you take to ensure code quality?",
+    "How do you approach debugging complex issues?"
+  ],
+  "message": "All questions retrieved successfully"
+}
+```
+
+### 6. Submit Tech Answer
+
+```bash
+curl -X POST http://localhost:8000/api/v1/submit-tech-answer/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "question_index": 0,
+    "tech_question": "What is your experience with Python?",
+    "tech_answer": "I have 5 years of experience with Python, working on web development projects with Django and Flask..."
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "message": "Technical answer submitted successfully",
+  "question_index": 0,
+  "tech_question": "What is your experience with Python?",
+  "tech_answer": "I have 5 years of experience with Python, working on web development projects with Django and Flask..."
+}
+```
+
+### 7A. Submit Interview Text Answer
+
+```bash
+curl -X POST http://localhost:8000/api/v1/submit-interview-answer/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "index": 0,
+    "answer_type": "text",
+    "question": "Can you describe a challenging software development project you worked on?",
+    "answer": "I worked on a web application that processed user resumes and provided interview preparation..."
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "message": "Text answer submitted for question 1",
+  "question": "Can you describe a challenging software development project you worked on?",
+  "answer_type": "text",
+  "answer": "I worked on a web application that processed user resumes...",
+  "progress": 33.33,
+  "is_completed": false
+}
+```
+
+### 7B. Submit Interview Video Answer (Alternative)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/submit-interview-answer/ \
+  -F "id=12f4f5a8-9d20-43a6-8104-0b03cfd56ab3" \
+  -F "index=0" \
+  -F "answer_type=video" \
+  -F "question=Can you describe a challenging software development project you worked on?" \
+  -F "video=@answer_video.mp4"
+```
+
+**Response:**
+
+```json
+{
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "message": "Video answer submitted for question 1",
+  "question": "Can you describe a challenging software development project you worked on?",
+  "answer_type": "video",
+  "video_path": "interview_videos/uuid_q0_abc123.mp4",
+  "video_filename": "answer_video.mp4",
+  "video_size": 15728640,
+  "progress": 33.33,
+  "is_completed": false
+}
+```
+
+### 8. Get Feedback (Text Answers Only)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/feedback/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+    "answer_type": "text"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "feedbacks": {
+    "question_1_feedback": "Your answer provided a solid example...",
+    "question_2_feedback": "Your response shows good understanding...",
+    "summary": "Overall, the candidate shows experience in technical roles..."
   }
 }
 ```
 
-#### Forbidden - `403 Forbidden` (when DEBUG=False)
+### 9. Remove Resume (Cleanup)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/remove-resume/ \
+  -H "Content-Type: application/json" \
+  -d '{"id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
+```
+
+**Response:**
 
 ```json
 {
-  "error": "Debug endpoint disabled in production"
-}
-```
-
----
-
-## 👤 Authentication APIs(NOT in use)
-
-### User Signup
-
-#### Endpoint
-
-```text
-POST /api/v1/signup/
-```
-
-#### Request Body
-
-```json
-{
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "securepassword123",
-  "full_name": "Test User",
-  "is_employer": false
-}
-```
-
-#### Response
-
-```json
-{
-  "message": "User created"
-}
-```
-
-### User Login
-
-#### Endpoint
-
-```text
-POST /api/v1/login/
-```
-
-#### Request Body
-
-```json
-{
-  "email": "test@example.com",
-  "password": "securepassword123"
-}
-```
-
-#### Response
-
-```json
-{
-  "message": "Login successful",
-  "user": {
-    "id": 1,
-    "email": "test@example.com",
-    "full_name": "Test User",
-    "is_employer": false
-  }
-}
-```
-
-### User Logout
-
-#### Endpoint
-
-```text
-POST /api/v1/logout/
-```
-
-#### Response
-
-```json
-{
-  "message": "Logged out successfully"
+  "message": "Resume and associated data removed successfully"
 }
 ```
 
@@ -306,7 +330,7 @@ POST /api/v1/logout/
 
 ### Description
 
-Retrieve grammar check results for a given resume identified by `doc_id`. Returns the grammar analysis performed on the resume text, including detected issues, suggestions, and corrections.
+Retrieve grammar check results for a given resume identified by `id`. Returns the grammar analysis performed on the resume text, including detected issues, suggestions, and corrections.
 
 ### Endpoint
 
@@ -324,9 +348,9 @@ application/json
 
 #### Body Parameters
 
-| Field    | Type          | Required | Description                                              |
-| -------- | ------------- | -------- | -------------------------------------------------------- |
-| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+| Field | Type          | Required | Description                                          |
+| ----- | ------------- | -------- | ---------------------------------------------------- |
+| `id`  | string (UUID) | ✅       | The `id` returned by the `/upload-resume/` endpoint. |
 
 ### Example cURL
 
@@ -334,7 +358,7 @@ application/json
 curl -X POST \
   http://localhost:8000/api/v1/get-grammar-results/ \
   -H "Content-Type: application/json" \
-  -d '{"doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
+  -d '{"id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"}'
 ```
 
 ### Response
@@ -397,7 +421,7 @@ curl -X POST \
 }
 ```
 
-#### Invalid doc_id - `404 Not Found`
+#### Invalid id - `404 Not Found`
 
 ```json
 {
@@ -437,13 +461,11 @@ multipart/form-data
 
 #### Body Parameters
 
-| Field          | Type          | Required | Description                                                                |
-| -------------- | ------------- | -------- | -------------------------------------------------------------------------- |
-| `doc_id`       | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint.                   |
-| `title`        | string        | ✅       | The target job title (e.g., "Software Engineer").                          |
-| `answer_type`  | string        | ❌       | How answers will be submitted: 'text' or 'video' (defaults to 'text').     |
-| `description`  | string        | ❌       | Detailed job description and responsibilities.                             |
-| `requirements` | string        | ❌       | Job requirements and qualifications.                                       |
+| Field         | Type          | Required | Description                                                            |
+| ------------- | ------------- | -------- | ---------------------------------------------------------------------- |
+| `id`          | string (UUID) | ✅       | The `id` returned by the `/upload-resume/` endpoint.                   |
+| `title`       | string        | ✅       | The target job title (e.g., "Software Engineer").                      |
+| `answer_type` | string        | ❌       | How answers will be submitted: 'text' or 'video' (defaults to 'text'). |
 
 ### Example cURL
 
@@ -454,9 +476,7 @@ curl -X POST \
   -d '{
     "id": "f99d744c-7bc3-4d0d-ae31-bd6ef42929b3",
     "title": "Software Engineer",
-    "answer_type": "text",
-    "description": "Full-stack software engineer position requiring Python, Django, and React experience.",
-    "requirements": "Bachelor degree in Computer Science, 3+ years experience in web development."
+    "answer_type": "text"
   }'
 ```
 
@@ -466,9 +486,9 @@ curl -X POST \
 
 ```json
 {
-  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
   "message": "Target job and answer type saved successfully",
-  "answer_type": "video"
+  "answer_type": "text"
 }
 ```
 
@@ -509,7 +529,7 @@ Generates personalized interview questions based on the uploaded resume and targ
 ### Endpoint
 
 ```text
-POST /api/v1/get-questions/
+POST /api/v1/get-all-questions/
 ```
 
 ### Request
@@ -522,18 +542,18 @@ application/json
 
 #### Body Parameters
 
-| Field    | Type          | Required | Description                                              |
-| -------- | ------------- | -------- | -------------------------------------------------------- |
-| `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
+| Field | Type          | Required | Description                                          |
+| ----- | ------------- | -------- | ---------------------------------------------------- |
+| `id`  | string (UUID) | ✅       | The `id` returned by the `/upload-resume/` endpoint. |
 
 ### Example cURL
 
 ```bash
 curl -X POST \
-  http://localhost:8000/api/v1/get-questions/ \
+  http://localhost:8000/api/v1/get-all-questions/ \
   -H "Content-Type: application/json" \
   -d '{
-    "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"
+    "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3"
   }'
 ```
 
@@ -543,20 +563,23 @@ curl -X POST \
 
 ```json
 {
-  "doc_id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
+  "finished": true,
+  "tech_questions": ["What is your experience with Python?"],
   "interview_questions": [
     "Can you describe a challenging software development project you worked on and how you addressed any obstacles?",
     "What steps do you take to ensure the quality and reliability of your code before it's deployed?",
     "How do you approach debugging a complex software issue that you're unfamiliar with?"
-  ]
+  ],
+  "message": "All questions retrieved successfully"
 }
 ```
 
-#### Missing doc_id - `400 Bad Request`
+#### Missing id - `400 Bad Request`
 
 ```json
 {
-  "error": "doc_id is required"
+  "error": "id is required"
 }
 ```
 
@@ -679,7 +702,7 @@ multipart/form-data
 | Field    | Type          | Required | Description                                              |
 | -------- | ------------- | -------- | -------------------------------------------------------- |
 | `doc_id` | string (UUID) | ✅       | The `doc_id` returned by the `/upload-resume/` endpoint. |
-| `video`  | file          | ✅       | The video file to upload. Must be under 75MB.           |
+| `video`  | file          | ✅       | The video file to upload. Must be under 75MB.            |
 
 ### Example cURL
 
@@ -898,100 +921,219 @@ python manage.py test test.test_integration.IntegrationTest.test_complete_interv
 
 ### ✅ Fully Implemented and Tested
 
-- `POST /api/v1/upload-resume/` - Upload PDF resume (< 5MB)
-- `POST /api/v1/get-keywords/` - Extract keywords from resume using OpenAI
-- `POST /api/v1/get-grammar-results/` - Get grammar check results for resume
-- `POST /api/v1/target-job/` - Save target job preferences and answer type (text/video)
-- `POST /api/v1/get-questions/` - Generate AI-powered interview questions
-- `POST /api/v1/submit-answer/` - Submit answers to interview questions
-- `POST /api/v1/upload-video/` - Upload video interview responses (< 75MB)
-- `GET /api/v1/feedback/` - Get detailed AI feedback on answers
-- `GET /api/v1/debug/` - Debug information (development only)
+### 📋 API Summary
 
-### 🚫 Not Currently Used
+#### ✅ Ready for Production Use
+
+- `POST /api/v1/upload-resume/` - Upload PDF resume (< 5MB) ✅
+- `POST /api/v1/get-keywords/` - Extract keywords from resume using OpenAI ✅
+- `POST /api/v1/get-grammar-results/` - Get grammar check results for resume ✅
+- `POST /api/v1/target-job/` - Save target job preferences ✅
+- `POST /api/v1/get-all-questions/` - Get both technical and interview questions ✅
+- `POST /api/v1/submit-interview-answer/` - Submit text/video answers with proper validation ✅
+- `POST /api/v1/feedback/` - Get detailed AI feedback on text answers ✅
+- `POST /api/v1/remove-resume/` - Remove specific resume by ID ✅
+- `GET /api/v1/debug/` - Debug information (development only) ✅
+
+#### ⚠️ Partially Implemented
+
+- `POST /api/v1/submit-tech-answer/` - Technical answers work but need enhanced question generation ⚠️
+- `POST /api/v1/feedback/` with `"answer_type": "video"` - Returns 501 Not Implemented ⚠️
+
+#### 🔧 Deprecated but Functional
+
+- `POST /api/v1/get-interview-questions/` - Use `get-all-questions` instead 🔧
+
+### 🚫 Currently Disabled
+
+Authentication system is disabled in current configuration:
 
 - `POST /api/v1/signup/` - User registration (authentication disabled)
 - `POST /api/v1/login/` - User authentication (authentication disabled)
 - `POST /api/v1/logout/` - User logout (authentication disabled)
 
-### 📋 Future Enhancements (Optional)
+### � Future Enhancements
 
-- Advanced video transcription and analysis
+#### Video Processing Pipeline
+
+- Audio transcription using Deepgram API (infrastructure ready)
+- Video-based interview feedback analysis
+- Advanced video processing capabilities
+
+#### Enhanced Features
+
 - Multi-language support for international candidates
-- Advanced knowledge graph integration
-- Interview scheduling and calendar features
-- Real-time video interview capabilities
+- Advanced technical question generation
+- Real-time interview progress analytics
+- Interview scheduling and calendar integration
 
 ---
 
-## 🚀 Getting Started
+## Release Notes
 
-### Complete Interview Workflow
+### v2.0.0 - Dual Answer Type Support
 
-1. **Upload Resume**:
-
-   ```bash
-   curl -X POST http://localhost:8000/api/v1/upload-resume/ \
-     -F "file=@resume.pdf"
-   ```
-
-2. **Set Target Job**:
-
-   ```bash
-   curl -X POST http://localhost:8000/api/v1/target-job/ \
-     -H "Content-Type: application/json" \
-     -d '{"doc_id": "YOUR_DOC_ID", "title": "Software Engineer", "description": "Full-stack role", "requirements": "3+ years experience"}'
-   ```
-
-3. **Get Interview Questions**:
-
-   ```bash
-   curl -X POST http://localhost:8000/api/v1/get-questions/ \
-     -H "Content-Type: application/json" \
-     -d '{"doc_id": "YOUR_DOC_ID"}'
-   ```
-
-4. **Submit Answers**:
-
-   ```bash
-   curl -X POST http://localhost:8000/api/v1/submit-answer/ \
-     -H "Content-Type: application/json" \
-     -d '{"doc_id": "YOUR_DOC_ID", "question": "Question text", "answer": "Your answer", "question_index": 0}'
-   ```
-
-5. **Get Feedback**:
-   ```bash
-   curl -X GET "http://localhost:8000/api/v1/feedback/?doc_id=YOUR_DOC_ID"
-   ```
-
----
-
-## 📝 Release Notes
-
-### v1.0.0 - Complete Interview API Suite
-
-**🎉 Major Release**: All core interview preparation APIs implemented and tested
+**🎉 Major Feature Update**: Complete dual text/video answer support with proper API differentiation
 
 **✅ New Features**:
 
-- Complete interview workflow from resume upload to feedback
-- OpenAI-powered question generation and feedback
-- Comprehensive integration testing
-- Database locking issue handling
-- Detailed API documentation with examples
+- **Dual Answer Types**: Text and video answers with separate processing pipelines
+- **Response Differentiation**: Clean API responses - text answers don't include video fields and vice versa
+- **Video Upload**: 75MB video file support with unique filename generation and secure storage
+- **Enhanced Validation**: Comprehensive input validation for both answer types
+- **Progress Tracking**: Real-time interview progress calculation and completion status
+- **Utility Functions**: Separate `process_text_answer()` and `process_video_answer()` functions
 
 **🔧 Technical Improvements**:
 
-- Background resume parsing with threading
-- Graceful error handling for database conflicts
-- Structured response formats with detailed feedback
-- Progress tracking for interview sessions
+- Refactored `submit_interview_answer()` to use utility functions for better maintainability
+- Enhanced error handling with proper status codes for all scenarios
+- Video file storage in dedicated `interview_videos/` directory with collision-safe naming
+- Clean separation of concerns between text and video processing logic
 
-**📊 Testing**:
+**📊 Current Status**:
 
-- Full integration test coverage (`test_integration.py`)
-- End-to-end workflow validation
-- Real OpenAI API integration testing
-- Automated test execution with detailed reporting
+- Text-based interview flow: 100% functional with AI feedback
+- Video upload and storage: 100% functional
+- Video feedback processing: Infrastructure ready, implementation pending
 
-The Jobify backend now provides a production-ready interview preparation platform with AI-powered question generation and feedback systems.
+**⚠️ Known Limitations**:
+
+- Video answer feedback returns 501 Not Implemented (planned for future release)
+- Technical question generation needs enhancement
+- Audio transcription utilities available but not integrated into main flow
+
+The Jobify backend now provides a robust dual-mode interview system supporting both traditional text responses and modern video answer submission with proper API design patterns.
+
+### Previous Releases
+
+**v1.0.0 - Complete Interview API Suite**: Initial release with full text-based interview workflow, OpenAI integration, and comprehensive testing coverage.
+
+---
+
+## 🐛 Debug Endpoint (Development Only)
+
+### Description
+
+Returns debug information about the server configuration. **Only available when DEBUG=True**.
+
+### Endpoint
+
+```text
+GET /api/v1/debug/
+```
+
+### Request
+
+No parameters required.
+
+### Example cURL
+
+```bash
+curl -X GET http://localhost:8000/api/v1/debug/
+```
+
+### Response
+
+#### Success - `200 OK` (when DEBUG=True)
+
+```json
+{
+  "DEBUG": true,
+  "DATABASES": "sqlite3",
+  "KEYS": {
+    "OPENAI_API_KEY": "sk-..."
+  }
+}
+```
+
+#### Forbidden - `403 Forbidden` (when DEBUG=False)
+
+```json
+{
+  "error": "Debug endpoint disabled in production"
+}
+```
+
+---
+
+## 👤 Authentication APIs (NOT in use)
+
+### User Signup
+
+#### Endpoint
+
+```text
+POST /api/v1/signup/
+```
+
+#### Request Body
+
+```json
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "securepassword123",
+  "full_name": "Test User",
+  "is_employer": false
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "User created"
+}
+```
+
+### User Login
+
+#### Endpoint
+
+```text
+POST /api/v1/login/
+```
+
+#### Request Body
+
+```json
+{
+  "email": "test@example.com",
+  "password": "securepassword123"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "id": 1,
+    "email": "test@example.com",
+    "full_name": "Test User",
+    "is_employer": false
+  }
+}
+```
+
+### User Logout
+
+#### Endpoint
+
+```text
+POST /api/v1/logout/
+```
+
+#### Response
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+```
+
+```
