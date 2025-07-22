@@ -45,7 +45,8 @@ class APITester:
         self.failed_tests = 0
         self.id = None
         self.save_response_flag = save_response
-        self.interview_questions = {}  # Store questions for interview tests
+        self.interview_questions = []  # Store questions for interview tests
+        self.tech_questions = []  # Store technical questions for interview tests
         self.failed_test_names = []  # Track names of failed tests
 
     def print_header(self, test_name: str):
@@ -515,8 +516,8 @@ startxref
                 )
 
             # Always save the response to grammar_result.json
-            with open("grammar_result.json", "w") as f:
-                json.dump(response_data, f, indent=2)
+            # with open("grammar_result.json", "w") as f:
+            #     json.dump(response_data, f, indent=2)
             print(
                 f"{Colors.BLUE}💾 Grammar results saved to: grammar_result.json{Colors.NC}"
             )
@@ -629,6 +630,7 @@ startxref
             )
             self.save_response("get_questions_valid", response_data)
             self.interview_questions = response_data.get("interview_questions", [])
+            self.tech_questions = response_data.get("tech_questions", [])
             if not self.interview_questions:
                 print(
                     f"{Colors.YELLOW}⚠️  No questions returned for id: {self.id}{Colors.NC}"
@@ -662,6 +664,58 @@ startxref
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
             self.mark_test_failed("POST /api/v1/get-questions/ (missing id)")
+            return {}
+
+    def test_submit_tech_question_valid(self):
+        """Test submitting technical question answers"""
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            return {}
+
+        self.print_header("Submit Technical Question Answers - Valid")
+        try:
+            # Hardcoded sample answers for testing
+            sample_answers = [
+                {
+                    "id": self.id,
+                    "question": self.tech_questions[0],
+                    "answer": "I have built several REST APIs using Django and Flask, focusing on best practices like versioning, authentication, and error handling.",
+                    "index": 0,
+                },
+            ]
+            successful_submissions = 0
+            for i, answer_data in enumerate(sample_answers):
+                print(f"{Colors.YELLOW}📝 Submitting answer {i + 1}/1...{Colors.NC}")
+
+                data = sample_answers[i]
+
+                response = requests.post(
+                    f"{self.base_url}/api/v1/submit-tech-answer/",
+                    json=data,
+                    verify=VERIFY_SSL,
+                )
+                response_data = self.parse_response(response)
+
+                if response.status_code == 200:
+                    successful_submissions += 1
+                    print(
+                        f"{Colors.GREEN}✅ Answer {i + 1} submitted successfully{Colors.NC}"
+                    )
+
+                    # Show progress if available
+                    if "progress" in response_data:
+                        progress = response_data["progress"]
+                        print(f"{Colors.YELLOW}📊 Progress: {progress}{Colors.NC}")
+                else:
+                    print(
+                        f"{Colors.RED}❌ Failed to submit answer {i + 1}: Status {response.status_code}{Colors.NC}"
+                    )
+                    print(
+                        f"{Colors.RED}   Error: {response_data.get('error', 'Unknown error')}{Colors.NC}"
+                    )
+        except Exception as e:
+            print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
+            self.mark_test_failed("POST /api/v1/submit-tech-question/")
             return {}
 
     def test_submit_interview_answer(self):
@@ -902,6 +956,7 @@ startxref
             self.test_target_job_valid()
             # Interview workflow tests
             self.test_get_questions_valid()
+            self.test_submit_tech_question_valid()
             self.test_submit_interview_answer()
             self.test_get_feedback()
 
