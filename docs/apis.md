@@ -211,9 +211,9 @@ curl -X POST http://localhost:8000/api/v1/submit-tech-answer/ \
   -H "Content-Type: application/json" \
   -d '{
     "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
-    "question_index": 0,
-    "tech_question": "What is your experience with Python?",
-    "tech_answer": "I have 5 years of experience with Python, working on web development projects with Django and Flask..."
+    "index": 0,
+    "question": "What is your experience with Python?",
+    "answer": "I have 5 years of experience with Python, working on web development projects with Django and Flask..."
   }'
 ```
 
@@ -223,9 +223,9 @@ curl -X POST http://localhost:8000/api/v1/submit-tech-answer/ \
 {
   "id": "12f4f5a8-9d20-43a6-8104-0b03cfd56ab3",
   "message": "Technical answer submitted successfully",
-  "question_index": 0,
-  "tech_question": "What is your experience with Python?",
-  "tech_answer": "I have 5 years of experience with Python, working on web development projects with Django and Flask..."
+  "index": 0,
+  "question": "What is your experience with Python?",
+  "answer": "I have 5 years of experience with Python, working on web development projects with Django and Flask..."
 }
 ```
 

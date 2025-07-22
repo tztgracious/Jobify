@@ -108,15 +108,15 @@ def submit_tech_answer(request):
     Submit an answer to a technical question in an interview session.
     Expected payload: {
         "id": "uuid",
-        "question_index": 0,  # Index of the question being answered (0-based)
-        "tech_question": "What is your experience with Python?",  # The technical question text for validation
-        "tech_answer": "I have 5 years of experience with Python..."
+        "index": 0,  # Index of the question being answered (0-based)
+        "question": "What is your experience with Python?",  # The technical question text for validation
+        "answer": "I have 5 years of experience with Python..."
     }
     """
     session_id = request.data.get('id')
-    question_index = request.data.get('question_index')
-    tech_question = request.data.get('tech_question', '').strip()
-    tech_answer = request.data.get('tech_answer', '').strip()
+    question_index = request.data.get('index')
+    tech_question = request.data.get('question', '').strip()
+    tech_answer = request.data.get('answer', '').strip()
 
     if not session_id:
         logger.warning("submit_tech_answer called without id")
@@ -168,9 +168,9 @@ def submit_tech_answer(request):
     return Response({
         "id": session_id,
         "message": "Technical answer submitted successfully",
-        "question_index": question_index,
-        "tech_question": tech_question,
-        "tech_answer": tech_answer
+        "index": question_index,
+        "question": tech_question,
+        "answer": tech_answer
     }, status=status.HTTP_200_OK)
 
 
