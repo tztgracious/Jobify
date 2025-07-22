@@ -331,6 +331,7 @@ def get_feedback(request):
             "interview_feedbacks": ["feedback1", "feedback2", "feedback3"],
         }
     """
+    logger.info("=== FEEDBACK REQUEST STARTED ===")
     session_id = request.data.get('id')
     if not session_id:
         logger.warning("get_feedback called without id")
@@ -342,6 +343,7 @@ def get_feedback(request):
     answer_type = request.data.get('answer_type', '')
     match answer_type:
         case 'text':
+            logger.info(f"Retrieving feedback for id: {session_id}, answer_type: {answer_type}")
             feedback = get_feedback_using_openai_text(session)
             if not feedback:
                 logger.warning(f"No feedback questions generated for session {session.id}")
@@ -354,8 +356,9 @@ def get_feedback(request):
             }, status=status.HTTP_200_OK)
         case 'video':
             # TODO: implement video feedback
+            logger.info(f"Retrieving feedback for id: {session_id}, answer_type: {answer_type}")
             feedback = get_feedback_using_openai_video(session)
-            return Response({})
+            return Response({"error": "Video feedback not yet implemented"}, status=status.HTTP_400_BAD_REQUEST)
         case _:
             logger.warning("get_feedback called with invalid answer_type")
             return Response({"error": "answer_type must be either 'text' or 'video'"},

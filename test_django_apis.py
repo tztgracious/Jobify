@@ -43,9 +43,9 @@ class APITester:
         self.total_tests = 0
         self.passed_tests = 0
         self.failed_tests = 0
-        self.doc_id = None
+        self.id = None
         self.save_response_flag = save_response
-        self.questions = []  # Store questions for interview tests
+        self.interview_questions = {}  # Store questions for interview tests
         self.failed_test_names = []  # Track names of failed tests
 
     def print_header(self, test_name: str):
@@ -280,14 +280,14 @@ startxref
                 "POST /api/v1/upload-resume/ (valid PDF)",
                 data,
             )
-            # Extract doc_id for later tests
-            if "doc_id" in data:
-                self.doc_id = data["doc_id"]
-                print(f"{Colors.YELLOW}📋 Extracted doc_id: {self.doc_id}{Colors.NC}")
+            # Extract id for later tests
+            if "id" in data:
+                self.id = data["id"]
+                print(f"{Colors.YELLOW}📋 Extracted id: {self.id}{Colors.NC}")
             else:
-                print(f"{Colors.RED}❌ ERROR: No doc_id in response{Colors.NC}")
+                print(f"{Colors.RED}❌ ERROR: No id in response{Colors.NC}")
                 self.mark_test_failed(
-                    "POST /api/v1/upload-resume/ (valid PDF) - no doc_id"
+                    "POST /api/v1/upload-resume/ (valid PDF) - no id"
                 )
             self.save_response("upload_resume_success", data)
             return data
@@ -297,12 +297,12 @@ startxref
             return {}
 
     def test_get_keywords_valid(self):
-        """Test get keywords with valid doc_id"""
-        if not self.doc_id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+        """Test get keywords with valid id"""
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
             return {}
 
-        self.print_header("Get Keywords - Valid doc_id")
+        self.print_header("Get Keywords - Valid id")
         try:
             import time
 
@@ -310,7 +310,7 @@ startxref
             retry_delay = 3  # Wait 3 seconds between retries
 
             for attempt in range(max_retries):
-                data = {"doc_id": self.doc_id}
+                data = {"id": self.id}
                 response = requests.post(
                     f"{self.base_url}/api/v1/get-keywords/",
                     data=data,
@@ -343,7 +343,7 @@ startxref
             self.check_result(
                 200,
                 response.status_code,
-                "POST /api/v1/get-keywords/ (valid doc_id)",
+                "POST /api/v1/get-keywords/ (valid id)",
                 response_data,
             )
 
@@ -368,12 +368,12 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/get-keywords/ (valid doc_id)")
+            self.mark_test_failed("POST /api/v1/get-keywords/ (valid id)")
             return {}
 
-    def test_get_keywords_no_doc_id(self):
-        """Test get keywords without doc_id"""
-        self.print_header("Get Keywords - No doc_id")
+    def test_get_keywords_no_id(self):
+        """Test get keywords without id"""
+        self.print_header("Get Keywords - No id")
         try:
             response = requests.post(
                 f"{self.base_url}/api/v1/get-keywords/", verify=VERIFY_SSL
@@ -382,21 +382,21 @@ startxref
             self.check_result(
                 400,
                 response.status_code,
-                "POST /api/v1/get-keywords/ (no doc_id)",
+                "POST /api/v1/get-keywords/ (no id)",
                 data,
             )
-            self.save_response("get_keywords_no_doc_id", data)
+            self.save_response("get_keywords_no_id", data)
             return data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/get-keywords/ (no doc_id)")
+            self.mark_test_failed("POST /api/v1/get-keywords/ (no id)")
             return {}
 
-    def test_get_keywords_invalid_doc_id(self):
-        """Test get keywords with invalid doc_id"""
-        self.print_header("Get Keywords - Invalid doc_id")
+    def test_get_keywords_invalid_id(self):
+        """Test get keywords with invalid id"""
+        self.print_header("Get Keywords - Invalid id")
         try:
-            data = {"doc_id": "invalid-uuid-12345"}
+            data = {"id": "invalid-uuid-12345"}
             response = requests.post(
                 f"{self.base_url}/api/v1/get-keywords/", data=data, verify=VERIFY_SSL
             )
@@ -404,23 +404,23 @@ startxref
             self.check_result(
                 404,
                 response.status_code,
-                "POST /api/v1/get-keywords/ (invalid doc_id)",
+                "POST /api/v1/get-keywords/ (invalid id)",
                 response_data,
             )
-            self.save_response("get_keywords_invalid_doc_id", response_data)
+            self.save_response("get_keywords_invalid_id", response_data)
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/get-keywords/ (invalid doc_id)")
+            self.mark_test_failed("POST /api/v1/get-keywords/ (invalid id)")
             return {}
 
     def test_get_grammar_valid(self):
-        """Test get grammar results with valid doc_id"""
-        if not self.doc_id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+        """Test get grammar results with valid id"""
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
             return {}
 
-        self.print_header("Get Grammar Results - Valid doc_id")
+        self.print_header("Get Grammar Results - Valid id")
         try:
             import time
 
@@ -428,7 +428,7 @@ startxref
             retry_delay = 3  # Wait 3 seconds between retries
 
             for attempt in range(max_retries):
-                data = {"doc_id": self.doc_id}
+                data = {"id": self.id}
                 response = requests.post(
                     f"{self.base_url}/api/v1/get-grammar-results/",
                     json=data,
@@ -461,7 +461,7 @@ startxref
             self.check_result(
                 200,
                 response.status_code,
-                "POST /api/v1/get-grammar-results/ (valid doc_id)",
+                "POST /api/v1/get-grammar-results/ (valid id)",
                 response_data,
             )
 
@@ -525,18 +525,18 @@ startxref
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/get-grammar-results/ (valid doc_id)")
+            self.mark_test_failed("POST /api/v1/get-grammar-results/ (valid id)")
             return {}
 
     def test_target_job_valid(self):
         """Test target job with valid data"""
-        if not self.doc_id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
             return {}
 
         self.print_header("Target Job - Valid")
         try:
-            data = {"doc_id": self.doc_id, "title": "Software Engineer"}
+            data = {"id": self.id, "title": "Software Engineer", "answer_type": "text"}
             response = requests.post(
                 f"{self.base_url}/api/v1/target-job/", json=data, verify=VERIFY_SSL
             )
@@ -558,7 +558,7 @@ startxref
         """Test target job with missing fields"""
         self.print_header("Target Job - Missing Fields")
         try:
-            data = {"title": "Software Engineer"}  # Missing doc_id
+            data = {"title": "Software Engineer"}  # Missing id
             response = requests.post(
                 f"{self.base_url}/api/v1/target-job/", json=data, verify=VERIFY_SSL
             )
@@ -566,55 +566,86 @@ startxref
             self.check_result(
                 400,
                 response.status_code,
-                "POST /api/v1/target-job/ (missing doc_id)",
+                "POST /api/v1/target-job/ (missing id)",
                 response_data,
             )
             self.save_response("target_job_missing_fields", response_data)
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/target-job/ (missing doc_id)")
+            self.mark_test_failed("POST /api/v1/target-job/ (missing id)")
             return {}
 
     def test_get_questions_valid(self):
-        """Test get interview questions with valid doc_id"""
-        if not self.doc_id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+        """Test get interview questions with valid id"""
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
             return {}
 
         self.print_header("Get Interview Questions - Valid")
         try:
-            data = {"doc_id": self.doc_id}
-            start = time.time()
-            response = requests.post(
-                f"{self.base_url}/api/v1/get-questions/", json=data, verify=VERIFY_SSL
-            )
-            end = time.time()
-            print(
-                f"{Colors.YELLOW}⏱️  Response time: {end - start:.2f} seconds{Colors.NC}"
-            )
-            response_data = self.parse_response(response)
+            import time
+
+            max_retries = 10  # Maximum number of retries
+            retry_delay = 3  # Wait 3 seconds between retries
+
+            for attempt in range(max_retries):
+                data = {"id": self.id}
+                start = time.time()
+                response = requests.post(
+                    f"{self.base_url}/api/v1/get-all-questions/", json=data, verify=VERIFY_SSL
+                )
+                end = time.time()
+                print(
+                    f"{Colors.YELLOW}⏱️  Response time: {end - start:.2f} seconds (Attempt {attempt + 1}/{max_retries}){Colors.NC}"
+                )
+                response_data = self.parse_response(response)
+                finished = response_data.get("finished", False)
+                # Check if questions generation is still in progress (status 200)
+                if not finished:
+                    print(
+                        f"{Colors.YELLOW}⏳ Questions generation in progress... (Status: 200, Attempt {attempt + 1}/{max_retries}){Colors.NC}"
+                    )
+                    if attempt < max_retries - 1:  # Don't sleep on the last attempt
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(
+                            f"{Colors.YELLOW}⚠️  Questions generation still not complete after {max_retries} attempts{Colors.NC}"
+                        )
+                        break
+                else:
+                    # Questions generation complete
+                    print(
+                        f"{Colors.GREEN}✅ Questions generation complete! (Status: 201){Colors.NC}"
+                    )
+                    break
+
             self.check_result(
-                201,
+                200,
                 response.status_code,
-                "POST /api/v1/get-questions/ (valid doc_id)",
+                "POST /api/v1/get-all-questions/ (valid id)",
                 response_data,
             )
             self.save_response("get_questions_valid", response_data)
-            self.questions = response_data.get("interview_questions", [])
-            if not self.questions:
+            self.interview_questions = response_data.get("interview_questions", [])
+            if not self.interview_questions:
                 print(
-                    f"{Colors.YELLOW}⚠️  No questions returned for doc_id: {self.doc_id}{Colors.NC}"
+                    f"{Colors.YELLOW}⚠️  No questions returned for id: {self.id}{Colors.NC}"
+                )
+            else:
+                print(
+                    f"{Colors.GREEN}✅ Retrieved {len(self.interview_questions)} interview questions{Colors.NC}"
                 )
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/get-questions/ (valid doc_id)")
+            self.mark_test_failed("POST /api/v1/get-all-questions/ (valid id)")
             return {}
 
-    def test_get_questions_missing_doc_id(self):
-        """Test get interview questions without doc_id"""
-        self.print_header("Get Interview Questions - Missing doc_id")
+    def test_get_questions_missing_id(self):
+        """Test get interview questions without id"""
+        self.print_header("Get Interview Questions - Missing id")
         try:
             response = requests.post(
                 f"{self.base_url}/api/v1/get-questions/", json={}, verify=VERIFY_SSL
@@ -623,40 +654,46 @@ startxref
             self.check_result(
                 400,
                 response.status_code,
-                "POST /api/v1/get-questions/ (missing doc_id)",
+                "POST /api/v1/get-questions/ (missing id)",
                 response_data,
             )
-            self.save_response("get_questions_missing_doc_id", response_data)
+            self.save_response("get_questions_missing_id", response_data)
             return response_data
         except Exception as e:
             print(f"{Colors.RED}❌ ERROR: {e}{Colors.NC}")
-            self.mark_test_failed("POST /api/v1/get-questions/ (missing doc_id)")
+            self.mark_test_failed("POST /api/v1/get-questions/ (missing id)")
             return {}
 
-    def test_submit_answer(self):
+    def test_submit_interview_answer(self):
         """Test submitting answers to interview questions"""
-        if not self.doc_id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
             return {}
 
-        self.print_header("Submit Answers - Valid")
+        self.print_header("Submit Interview Answers - Valid")
         try:
             # Hardcoded sample answers for testing
             sample_answers = [
                 {
-                    "question": self.questions[0],
+                    "id": self.id,
+                    "question": self.interview_questions[0],
                     "answer": "I worked on a web application that processed user resumes and provided interview preparation. This involved building REST APIs, implementing file upload functionality, and integrating with external AI services. The main challenge was handling concurrent file processing and ensuring data consistency.",
-                    "question_index": 0,
+                    "index": 0,
+                    "answer_type": "text",
                 },
                 {
-                    "question": self.questions[1],
+                    "id": self.id,
+                    "question": self.interview_questions[1],
                     "answer": "I follow a comprehensive approach including writing unit tests, conducting code reviews, using static analysis tools, implementing CI/CD pipelines, and following coding standards. I also practice test-driven development and ensure proper error handling and logging.",
-                    "question_index": 1,
+                    "index": 1,
+                    "answer_type": "text",
                 },
                 {
-                    "question": self.questions[2],
+                    "id": self.id,
+                    "question": self.interview_questions[2],
                     "answer": "I start by reproducing the issue consistently, then analyze logs and error messages. I use debugging tools to step through the code, isolate the problem area, and test potential solutions. I also document the issue and solution for future reference.",
-                    "question_index": 2,
+                    "index": 2,
+                    "answer_type": "text",
                 },
             ]
 
@@ -665,15 +702,10 @@ startxref
             for i, answer_data in enumerate(sample_answers):
                 print(f"{Colors.YELLOW}📝 Submitting answer {i + 1}/3...{Colors.NC}")
 
-                data = {
-                    "doc_id": self.doc_id,
-                    "question": answer_data["question"],
-                    "answer": answer_data["answer"],
-                    "question_index": answer_data["question_index"],
-                }
+                data = sample_answers[i]
 
                 response = requests.post(
-                    f"{self.base_url}/api/v1/submit-answer/",
+                    f"{self.base_url}/api/v1/submit-interview-answer/",
                     json=data,
                     verify=VERIFY_SSL,
                 )
@@ -729,15 +761,16 @@ startxref
 
     def test_get_feedback(self):
         """Test getting feedback on submitted answers"""
-        if not self.doc_id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No doc_id available{Colors.NC}")
+        if not self.id:
+            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
             return {}
 
         self.print_header("Get Feedback - Valid")
         try:
             start = time.time()
-            response = requests.get(
-                f"{self.base_url}/api/v1/feedback/?doc_id={self.doc_id}",
+            response = requests.post(
+                f"{self.base_url}/api/v1/feedback/",
+                json={"id": self.id, "answer_type": "text"},
                 verify=VERIFY_SSL,
             )
             end = time.time()
@@ -749,7 +782,7 @@ startxref
             self.check_result(
                 200,
                 response.status_code,
-                "GET /api/v1/feedback/ (valid doc_id)",
+                "POST /api/v1/feedback/ (valid id)",
                 response_data,
             )
 
@@ -858,18 +891,18 @@ startxref
             self.test_debug_endpoint()
             # self.test_upload_resume_no_file()
             # self.test_upload_resume_invalid_file()
-            # self.test_get_keywords_no_doc_id()
-            # self.test_get_keywords_invalid_doc_id()
+            # self.test_get_keywords_no_id()
+            # self.test_get_keywords_invalid_id()
 
             self.test_upload_resume_success(pdf_path)
             self.test_get_keywords_valid()
             self.test_get_grammar_valid()
             # self.test_target_job_missing_fields()
-            # self.test_get_questions_missing_doc_id()
+            # self.test_get_questions_missing_id()
             self.test_target_job_valid()
             # Interview workflow tests
             self.test_get_questions_valid()
-            self.test_submit_answer()
+            self.test_submit_interview_answer()
             self.test_get_feedback()
 
             # self.test_signup()

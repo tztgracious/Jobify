@@ -272,7 +272,7 @@ def target_job(request):
     # Extract data from request
     session_id = request.data.get('id')
     title = request.data.get('title')
-    answer_type = request.data.get('answer_type', 'text')  # 'text' or 'video'
+    answer_type = request.data.get('answer_type')  # 'text' or 'video'
 
     logger.info(f"Received id: {session_id}, title: {title}, answer_type: {answer_type}")
 
