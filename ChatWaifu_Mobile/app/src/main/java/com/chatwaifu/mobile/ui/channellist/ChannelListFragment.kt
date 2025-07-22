@@ -87,9 +87,10 @@ class ChannelListFragment : Fragment() {
         if (!PermissionUtils.checkNetPermission(requireActivity())) {
             PermissionUtils.requestNetPermission(requireActivity())
         }
-        if (!PermissionUtils.checkRecordPermission(requireActivity())) {
-            PermissionUtils.requestRecordPermission(requireActivity())
-        }
+        // 移除麦克风权限请求
+        // if (!PermissionUtils.checkRecordPermission(requireActivity())) {
+        //     PermissionUtils.requestRecordPermission(requireActivity())
+        // }
     }
 
     private fun onClick(item: ChannelListBean) {

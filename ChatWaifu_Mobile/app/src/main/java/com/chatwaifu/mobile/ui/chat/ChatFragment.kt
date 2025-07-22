@@ -30,6 +30,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 
 /**
  * Main Chat Fragment
@@ -78,6 +85,7 @@ class ChatFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             setContent {
+                val isReady by activityViewModel.isReady.observeAsState(false)
                 var sendMessageContent by rememberSaveable { mutableStateOf("") }
                 var sendMessageTitle by rememberSaveable { mutableStateOf("") }
                 val chatContentUIStateFlow =
@@ -95,16 +103,25 @@ class ChatFragment : Fragment() {
                     sendMessageContent = contentDialogUIState.chatContent
                 }
                 sendMessageTitle =
-                    if (contentDialogUIState?.isFromMe == true) resources.getString(R.string.chat_dialog_sender_me) else activityViewModel.currentLive2DModelName
+                    if (contentDialogUIState?.isFromMe == true) resources.getString(R.string.chat_dialog_sender_me) else "Interviewer"
+                if (!isReady) {
+                    androidx.compose.material3.Button(
+                        onClick = { activityViewModel.onReady() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        androidx.compose.material3.Text("Ready")
+                    }
+                }
                 ChatWaifu_MobileTheme {
                     ChatContentScaffold(
                         originAndroidView = { live2DView!! },
                         onNavIconPressed = { activityViewModel.openDrawer() },
-                        chatTitle = activityViewModel.currentLive2DModelName,
+                        chatTitle = "Interviewer",
                         sendMessageTitle = sendMessageTitle,
                         sendMessageContent = sendMessageContent,
                         onSendMsgButtonClick = {
-                            activityViewModel.sendMineMsgUIState(it)
                             onSendMessage(it)
                         },
                         chatActivityViewModel = activityViewModel,
@@ -166,8 +183,7 @@ class ChatFragment : Fragment() {
     private fun onSendMessage(sendText: String) {
         if (sendText.isNotBlank()) {
             Log.d(TAG, "try to send msg $sendText")
-            // In interview mode, only handle through sendMineMsgUIState
-            // No need to call sendMessage as it's been removed
+            activityViewModel.sendMessage(sendText)
         }
     }
 

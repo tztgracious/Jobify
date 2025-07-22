@@ -60,6 +60,17 @@
                 android:gravity="center"
                 android:layout_marginBottom="32dp"/>
 
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="60s"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:visibility="visible"/>
+
             <!-- 单题多轮对话区 -->
             <TextView
                 android:id="@+id/tvCurrentQuestion"

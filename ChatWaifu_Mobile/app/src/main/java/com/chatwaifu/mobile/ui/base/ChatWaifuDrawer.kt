@@ -187,9 +187,9 @@ private fun DrawerItem(
 @Composable
 private fun DrawerHeader() {
     Row(modifier = Modifier.padding(16.dp), verticalAlignment = CenterVertically) {
-        ChatWaifuChatIcon(
-            modifier = Modifier.size(24.dp)
-        )
+        // ChatWaifuChatIcon(
+        //     modifier = Modifier.size(24.dp)
+        // )
         Image(
             painter = painterResource(id = R.drawable.ic_chatwaifu),
             contentDescription = null,

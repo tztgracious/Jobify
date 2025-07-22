@@ -18,6 +18,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
 import com.google.android.material.snackbar.Snackbar
+import com.chatwaifu.mobile.ui.answertype.AnswerTypeSelectActivity
 
 class KeywordsActivity : AppCompatActivity() {
 
@@ -103,10 +104,12 @@ class KeywordsActivity : AppCompatActivity() {
         // 下一步按钮
         binding.btnNext.setOnClickListener {
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
-            startActivity(Intent(this, ChatActivity::class.java).apply {
-                putExtra("interview_mode", true)
-                putExtra("doc_id", docId) // 传递doc_id到聊天界面
-            })
+            val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
+            val intent = Intent(this, com.chatwaifu.mobile.ui.answertype.AnswerTypeSelectActivity::class.java).apply {
+                putExtra("doc_id", docId)
+                putExtra("keywords", keywords)
+            }
+            startActivity(intent)
         }
     }
     
