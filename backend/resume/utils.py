@@ -5,10 +5,9 @@ import re
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from llama_cloud_services import LlamaParse
-
 from interview.models import InterviewSession
 from jobify_backend.logger import logger
+from llama_cloud_services import LlamaParse
 
 
 def get_session_by_id(session_id: str):
@@ -26,7 +25,7 @@ def get_session_by_id(session_id: str):
 def grammar_check(text: str) -> dict:
     response = requests.post(
         "https://api.languagetool.org/v2/check",
-        data={"text": text, "language": "en-US"}
+        data={"text": text, "language": "en-US"},
     )
     return response.json()
 
@@ -59,7 +58,9 @@ def parse_resume(session_id: str):
             session.save()
 
         except Exception as grammar_error:
-            logger.error(f"Grammar check failed for doc_id: {session_id}, error: {grammar_error}")
+            logger.error(
+                f"Grammar check failed for doc_id: {session_id}, error: {grammar_error}"
+            )
             # Still mark as complete even if the grammar check fails
             session.resume_status = InterviewSession.Status.COMPLETE
             session.save()
@@ -87,10 +88,13 @@ def get_keywords_using_openai(text) -> str:
             "HTTP-Referer": "jobify.com",  # Optional. Site URL for rankings on openrouter.ai.
             "X-Title": "Jobify",  # Optional. Site title for rankings on openrouter.ai.
         },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [
-                {"role": "user", "content": f"""You are an expert resume analyzer.
+        data=json.dumps(
+            {
+                "model": "openai/gpt-4o",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"""You are an expert resume analyzer.
 
     Your task is to extract **up to 10 distinct English keywords** that best represent the skills, technologies, and important qualifications found in the following resume text.
 
@@ -105,12 +109,14 @@ def get_keywords_using_openai(text) -> str:
     \"\"\"
     {text}
     \"\"\"
-    """}
-            ]
-        })
+    """,
+                    }
+                ],
+            }
+        ),
     )
     response_text = response.json()["choices"][0]["message"]["content"]
-    match = re.search(r'\[.*?\]', response_text, re.DOTALL)
+    match = re.search(r"\[.*?\]", response_text, re.DOTALL)
     try:
         keywords = json.loads(match[0])
     except json.JSONDecodeError:

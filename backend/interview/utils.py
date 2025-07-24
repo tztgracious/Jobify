@@ -1,21 +1,16 @@
 import json
 import os
+import uuid
 
 import requests
-from deepgram import (
-    DeepgramClient,
-    PrerecordedOptions,
-)
-from rest_framework.response import Response
-
+from deepgram import DeepgramClient, PrerecordedOptions
+from django.conf import settings
 from interview.models import InterviewSession
 from jobify_backend.logger import logger
-import os
-import uuid
-from django.conf import settings
-from jobify_backend.logger import logger
 from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
-    
+from rest_framework.response import Response
+
+
 def get_questions_using_openai(session):
     target_job = session.target_job
     keywords = session.keywords
@@ -44,12 +39,12 @@ def get_questions_using_openai(session):
             "HTTP-Referer": "jobify.com",
             "X-Title": "Jobify",
         },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        })
+        data=json.dumps(
+            {
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        ),
     )
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
@@ -116,12 +111,12 @@ def get_feedback_using_openai_text(interview_session):
             "HTTP-Referer": "jobify.com",
             "X-Title": "Jobify",
         },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        })
+        data=json.dumps(
+            {
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        ),
     )
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
@@ -142,7 +137,10 @@ def get_feedback_using_openai_video(interview_session):
     prompt = f"""
     You are a professional interview coach.
     """
-    return Response({"error": "Not implemented yet. Please use text feedback for now."}, status=501)
+    return Response(
+        {"error": "Not implemented yet. Please use text feedback for now."}, status=501
+    )
+
 
 def extract_audio_from_video(video_file):
     """
@@ -154,20 +152,24 @@ def extract_audio_from_video(video_file):
 
     try:
         # Create a temporary file for the extracted audio
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio:
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio:
             temp_audio_path = temp_audio.name
 
         # Extract audio from video using ffmpeg
         # This command extracts audio and converts it to MP3
         ffmpeg_command = [
-            'ffmpeg',
-            '-i', video_file.temporary_file_path(),  # Input video file
-            '-vn',  # No video
-            '-acodec', 'mp3',  # Audio codec
-            '-ar', '16000',  # Sample rate (16kHz is good for speech recognition)
-            '-ac', '1',  # Mono audio
-            '-y',  # Overwrite output file
-            temp_audio_path
+            "ffmpeg",
+            "-i",
+            video_file.temporary_file_path(),  # Input video file
+            "-vn",  # No video
+            "-acodec",
+            "mp3",  # Audio codec
+            "-ar",
+            "16000",  # Sample rate (16kHz is good for speech recognition)
+            "-ac",
+            "1",  # Mono audio
+            "-y",  # Overwrite output file
+            temp_audio_path,
         ]
 
         # Run ffmpeg command
@@ -248,48 +250,55 @@ def get_feedback_video(video_file, doc_id):
         return {"error": "An error occurred while processing the video file."}
 
 
-def process_text_answer(session_id, question_index, question_text, answer, interview_session):
+def process_text_answer(
+    session_id, question_index, question_text, answer, interview_session
+):
     """
     Process a text answer for an interview question.
-    
+
     Args:
         session_id (str): The interview session ID
         question_index (int): Index of the question being answered
         question_text (str): The question text for validation
         answer (str): The text answer provided
         interview_session (InterviewSession): The interview session object
-        
+
     Returns:
         dict: Response data containing answer information and status
     """
-    
-    
+
     # Validate that the question text matches the stored question
     stored_question = interview_session.questions[question_index]
     if question_text.strip() != stored_question.strip():
-        logger.warning(f"Question mismatch for id {session_id}, question_index {question_index}")
+        logger.warning(
+            f"Question mismatch for id {session_id}, question_index {question_index}"
+        )
         return {
             "error": "Question text does not match the stored question",
             "expected_question": stored_question,
             "provided_question": question_text,
-            "status": 400
+            "status": 400,
         }
 
     # Initialize answers list if needed (pad with empty strings)
     if len(interview_session.answers) < len(interview_session.questions):
-        interview_session.answers = [''] * len(interview_session.questions)
+        interview_session.answers = [""] * len(interview_session.questions)
 
     # Update the specific answer
     interview_session.answers[question_index] = answer
 
     # Check if all questions are answered
-    answered_count = len([ans for ans in interview_session.answers if ans and ans.strip()])
+    answered_count = len(
+        [ans for ans in interview_session.answers if ans and ans.strip()]
+    )
     is_completed = answered_count == len(interview_session.questions)
     interview_session.is_completed = is_completed
 
     interview_session.save()
 
-    logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with text answer")
+    logger.info(
+        f"Updated interview session for id {session_id} - answered question {question_index} with text answer"
+    )
 
     # Return success response data
     return {
@@ -300,86 +309,98 @@ def process_text_answer(session_id, question_index, question_text, answer, inter
         "answer": answer,
         "progress": interview_session.progress,
         "is_completed": is_completed,
-        "status": 200
+        "status": 200,
     }
 
 
-def process_video_answer(session_id, question_index, question_text, video_file, interview_session):
+def process_video_answer(
+    session_id, question_index, question_text, video_file, interview_session
+):
     """
     Process a video answer for an interview question.
-    
+
     Args:
         session_id (str): The interview session ID
         question_index (int): Index of the question being answered
         video_file: The uploaded video file
         question_text (str): The question text for validation
         interview_session (InterviewSession): The interview session object
-        
+
     Returns:
         dict: Response data containing video information and status
     """
 
-    
     # Validate video file size
     if video_file.size > MAX_VIDEO_FILE_SIZE:
-        logger.warning(f"Video file too large for id {session_id}: {video_file.size} bytes")
+        logger.warning(
+            f"Video file too large for id {session_id}: {video_file.size} bytes"
+        )
         return {
             "error": f"Video file size too large. Maximum allowed size is 75MB, but received {video_file.size / (1024 * 1024):.1f}MB",
-            "status": 413
+            "status": 413,
         }
 
     # Validate that the question text matches the stored question
     stored_question = interview_session.questions[question_index]
     if question_text.strip() != stored_question.strip():
-        logger.warning(f"Question mismatch for id {session_id}, question_index {question_index}")
+        logger.warning(
+            f"Question mismatch for id {session_id}, question_index {question_index}"
+        )
         return {
             "error": "Question text does not match the stored question",
             "expected_question": stored_question,
             "provided_question": question_text,
-            "status": 400
+            "status": 400,
         }
 
     # Create videos directory if it doesn't exist
-    video_dir = os.path.join(settings.MEDIA_ROOT, 'interview_videos')
+    video_dir = os.path.join(settings.MEDIA_ROOT, "interview_videos")
     os.makedirs(video_dir, exist_ok=True)
 
     # Generate unique filename for the video answer
     file_extension = os.path.splitext(video_file.name)[1]
-    unique_filename = f"{session_id}_q{question_index}_{uuid.uuid4().hex}{file_extension}"
+    unique_filename = (
+        f"{session_id}_q{question_index}_{uuid.uuid4().hex}{file_extension}"
+    )
     file_path = os.path.join(video_dir, unique_filename)
 
     try:
         # Save the video file
-        with open(file_path, 'wb+') as destination:
+        with open(file_path, "wb+") as destination:
             for chunk in video_file.chunks():
                 destination.write(chunk)
-        
+
         # Store the relative path as the answer
         video_path = f"videos/{unique_filename}"
-        logger.info(f"Video answer saved for id {session_id}, question {question_index}: {file_path}")
-        
+        logger.info(
+            f"Video answer saved for id {session_id}, question {question_index}: {file_path}"
+        )
+
     except Exception as e:
-        logger.error(f"Failed to save video answer for id {session_id}, question {question_index}: {str(e)}")
-        return {
-            "error": "Failed to save video file",
-            "status": 500
-        }
+        logger.error(
+            f"Failed to save video answer for id {session_id}, question {question_index}: {str(e)}"
+        )
+        return {"error": "Failed to save video file", "status": 500}
 
     # Initialize answers list if needed (pad with empty strings)
     if len(interview_session.answers) < len(interview_session.questions):
-        interview_session.answers = [''] * len(interview_session.questions)
+        interview_session.answers = [""] * len(interview_session.questions)
 
     # Update the specific answer
     interview_session.answers[question_index] = video_path
 
     # Check if all questions are answered
-    answered_count = len([ans for ans in interview_session.answers if ans and ans.strip()])
+    answered_count = len(
+        [ans for ans in interview_session.answers if ans and ans.strip()]
+    )
     is_completed = answered_count == len(interview_session.questions)
     interview_session.is_completed = is_completed
 
     interview_session.save()
 
-    logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with video answer")
+    logger.info(
+        f"Updated interview session for id {session_id} - answered question {question_index} with video answer"
+    )
 
     # Return success response data
     return {
@@ -392,5 +413,5 @@ def process_video_answer(session_id, question_index, question_text, video_file, 
         "video_size": video_file.size,
         "progress": interview_session.progress,
         "is_completed": is_completed,
-        "status": 200
+        "status": 200,
     }

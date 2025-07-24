@@ -93,11 +93,11 @@ class APITester:
             }
 
     def check_result(
-            self,
-            expected_status: int,
-            actual_status: int,
-            test_name: str,
-            response_data: Dict = None,
+        self,
+        expected_status: int,
+        actual_status: int,
+        test_name: str,
+        response_data: Dict = None,
     ):
         if actual_status == expected_status:
             print(
@@ -230,7 +230,7 @@ startxref
         try:
             # Create a text file
             with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".txt", delete=False
+                mode="w", suffix=".txt", delete=False
             ) as f:
                 f.write("This is not a PDF")
                 txt_path = f.name
@@ -318,9 +318,9 @@ startxref
 
                 # Check if processing is still in progress
                 if (
-                        response.status_code == 200
-                        and response_data.get("finished") == False
-                        and response_data.get("error") == ""
+                    response.status_code == 200
+                    and response_data.get("finished") == False
+                    and response_data.get("error") == ""
                 ):
 
                     print(
@@ -436,9 +436,9 @@ startxref
 
                 # Check if processing is still in progress
                 if (
-                        response.status_code == 200
-                        and response_data.get("finished") == False
-                        and response_data.get("error") == ""
+                    response.status_code == 200
+                    and response_data.get("finished") == False
+                    and response_data.get("error") == ""
                 ):
 
                     print(
@@ -480,7 +480,9 @@ startxref
                             "shortMessage", match.get("message", "No message")
                         )
                         context = match.get("context", {}).get("text", "No context")
-                        print(f"{Colors.YELLOW}  📌 Issue {i + 1}: {message}{Colors.NC}")
+                        print(
+                            f"{Colors.YELLOW}  📌 Issue {i + 1}: {message}{Colors.NC}"
+                        )
                         if context != "No context":
                             context_preview = (
                                 context[:50] + "..." if len(context) > 50 else context
