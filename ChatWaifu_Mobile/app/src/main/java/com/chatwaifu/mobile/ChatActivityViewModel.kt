@@ -67,6 +67,15 @@ class ChatActivityViewModel : ViewModel() {
     // var needTranslate: Boolean = true // 不再需要翻译
     var needChatGPTProxy: Boolean = false
 
+    // 添加面试会话相关状态
+    val sessionId = "interview_session_${System.currentTimeMillis()}"
+    val currentQuestionText = MutableLiveData<String>()
+    val currentQuestionIndexLiveData = MutableLiveData<Int>()
+    
+    // 答题模式管理
+    private var answerMode: String = "text" // "text" or "video"
+    val answerModeLiveData = MutableLiveData<String>()
+
     private var inputFunc: ((input: String) -> Unit)? = null
     private val chatGPTNetService: ChatGPTNetService? by lazy {
         ChatGPTNetService(ChatWaifuApplication.context)
@@ -116,6 +125,11 @@ class ChatActivityViewModel : ViewModel() {
                 } else {
                     "Thank you for your answer. The interview is over."
                 }
+                
+                // 更新当前问题状态
+                currentQuestionText.postValue(question)
+                currentQuestionIndexLiveData.postValue(currentQuestionIndex)
+                
                 // 构造模拟的回复UI
                 val response = ChatGPTResponseData(
                     choices = listOf(
@@ -307,6 +321,11 @@ class ChatActivityViewModel : ViewModel() {
             } else {
                 "Thank you for your answer. The interview is over."
             }
+            
+            // 更新当前问题状态
+            currentQuestionText.postValue(question)
+            currentQuestionIndexLiveData.postValue(currentQuestionIndex)
+            
             val response = com.chatwaifu.chatgpt.ChatGPTResponseData(
                 choices = listOf(
                     com.chatwaifu.chatgpt.ListBean(
@@ -330,7 +349,26 @@ class ChatActivityViewModel : ViewModel() {
         }
     }
 
-    // 模拟后端面试官问题
+    fun setAnswerMode(mode: String) {
+        answerMode = mode
+        answerModeLiveData.postValue(mode)
+        Log.d(TAG, "Answer mode set to: $mode")
+    }
+
+    fun getAnswerMode(): String {
+        return answerMode
+    }
+
+    // 获取当前会话信息
+    fun getCurrentSessionInfo(): Triple<String, Int, String> {
+        return Triple(
+            sessionId,
+            currentQuestionIndexLiveData.value ?: 0,
+            currentQuestionText.value ?: "请回答这个问题"
+        )
+    }
+
+    // Interview questions in English
     private val interviewQuestions = listOf(
         "Please introduce yourself and tell me about your background.",
         "What are your greatest strengths and how would they benefit this role?",

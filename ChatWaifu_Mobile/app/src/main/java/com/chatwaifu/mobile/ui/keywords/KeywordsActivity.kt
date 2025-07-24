@@ -105,7 +105,7 @@ class KeywordsActivity : AppCompatActivity() {
         binding.btnNext.setOnClickListener {
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
             val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
-            val intent = Intent(this, com.chatwaifu.mobile.ui.answertype.AnswerTypeSelectActivity::class.java).apply {
+            val intent = Intent(this, com.chatwaifu.mobile.ui.answermode.AnswerModeSelectActivity::class.java).apply {
                 putExtra("doc_id", docId)
                 putExtra("keywords", keywords)
             }

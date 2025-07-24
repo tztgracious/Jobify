@@ -30,9 +30,21 @@ interface JobifyApiService {
     suspend fun getInterviewQuestions(
         @Body request: QuestionsRequest
     ): Response<QuestionsResponse>
+
+    // 提交面试答案 - 支持文本和视频（严格按照API文档格式）
+    @Multipart
+    @POST("api/v1/submit-interview-answer/")
+    suspend fun submitInterviewAnswer(
+        @Part("id") id: RequestBody,
+        @Part("index") index: RequestBody,
+        @Part("answer_type") answerType: RequestBody,
+        @Part("question") question: RequestBody,
+        @Part video: MultipartBody.Part? = null,
+        @Part("answer") textAnswer: RequestBody? = null
+    ): Response<SubmitAnswerResponse>
     
     companion object {
-        private const val BASE_URL = "http://localhost:8000/"
+        private const val BASE_URL = "http://10.0.2.2:8000/"  // 使用Android模拟器的localhost映射
         
         fun create(): JobifyApiService {
             return Retrofit.Builder()
@@ -77,4 +89,18 @@ data class QuestionsResponse(
     val finished: Boolean,
     val questions: List<String>,
     val error: String
+)
+
+// 提交答案响应数据（按照API文档格式）
+data class SubmitAnswerResponse(
+    val id: String,
+    val message: String,
+    val question: String,
+    val answer_type: String,
+    val answer: String? = null,           // 文本答案
+    val video_path: String? = null,       // 视频路径
+    val video_filename: String? = null,   // 视频文件名
+    val video_size: Long? = null,         // 视频文件大小
+    val progress: Double,                 // 进度百分比
+    val is_completed: Boolean             // 是否完成
 ) 
