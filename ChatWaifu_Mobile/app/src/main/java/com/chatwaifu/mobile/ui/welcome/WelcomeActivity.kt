@@ -3,10 +3,8 @@ package com.chatwaifu.mobile.ui.welcome
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.chatwaifu.mobile.ChatActivity
 import com.chatwaifu.mobile.databinding.ActivityWelcomeBinding
 import com.chatwaifu.mobile.ui.resume.UploadResumeActivity
-
 
 class WelcomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityWelcomeBinding
@@ -18,7 +16,7 @@ class WelcomeActivity : AppCompatActivity() {
 
         // Button
         binding.startButton.setOnClickListener {
-            // Jump to ResumeActivity
+            // Jump to ResumeActivity (正确的流程)
             startActivity(Intent(this, UploadResumeActivity::class.java))
             finish()  // Close WelcomeActivity
         }

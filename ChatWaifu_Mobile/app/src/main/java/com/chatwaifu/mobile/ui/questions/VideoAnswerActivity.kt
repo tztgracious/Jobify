@@ -1,24 +1,24 @@
 package com.chatwaifu.mobile.ui.questions
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.core.VideoCapture
 import androidx.camera.core.VideoCapture.OutputFileOptions
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.chatwaifu.mobile.R
 import com.chatwaifu.mobile.databinding.ActivityVideoAnswerBinding
+import com.chatwaifu.mobile.data.network.VideoUploadService
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,34 +30,51 @@ class VideoAnswerActivity : AppCompatActivity() {
     private var videoCapture: VideoCapture? = null
     private lateinit var cameraExecutor: ExecutorService
     private var outputUri: Uri? = null
+    private var outputFile: File? = null
     private var timer: CountDownTimer? = null
     private var isRecording = false
+    private var isUploading = false
+    private lateinit var videoUploadService: VideoUploadService
+    
+    // Intent parameters
+    private var sessionId: String = ""
+    private var questionIndex: Int = 0
+    private var questionText: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityVideoAnswerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Get parameters from intent
+        sessionId = intent.getStringExtra("session_id") ?: "default_session"
+        questionIndex = intent.getIntExtra("question_index", 0)
+        questionText = intent.getStringExtra("question_text") ?: "Please answer this question"
+
         cameraExecutor = Executors.newSingleThreadExecutor()
+        videoUploadService = VideoUploadService(this)
+        
         startCamera()
         setupUI()
+        
+        // Auto start recording after camera setup
+        binding.root.postDelayed({
+            startRecording()
+        }, 1000)
     }
 
     private fun setupUI() {
-        binding.btnStartRecord.setOnClickListener {
-            if (!isRecording) {
-                startRecording()
-            } else {
+        binding.btnAction.setOnClickListener {
+            if (isRecording) {
                 stopRecording()
             }
         }
-        binding.btnFinish.setOnClickListener {
-            finish()
-        }
-        binding.btnStartRecord.text = getString(R.string.start_recording)
-        binding.btnFinish.text = getString(R.string.finish)
-        binding.tvTimer.text = "60s"
-        updateUI(false)
+        
+        // Display question text
+        binding.tvQuestion.text = "Question ${questionIndex + 1}: $questionText"
+        
+        // Set initial UI to recording state since we auto-start recording
+        updateUI(true, false)
     }
 
     private fun startCamera() {
@@ -85,17 +102,24 @@ class VideoAnswerActivity : AppCompatActivity() {
             externalCacheDir,
             "video_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.mp4"
         )
+        outputFile = videoFile
         val outputOptions = OutputFileOptions.Builder(videoFile).build()
-        updateUI(true)
+        
         isRecording = true
+        // UI is already set to recording state in setupUI()
+        
+        // Start 60-second countdown
         timer = object : CountDownTimer(60_000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                binding.tvTimer.text = "${millisUntilFinished / 1000}s"
+                val seconds = millisUntilFinished / 1000
+                binding.tvTimer.text = "${seconds}s"
             }
             override fun onFinish() {
+                // Auto stop when time is up
                 stopRecording()
             }
         }.start()
+        
         videoCapture?.startRecording(
             outputOptions,
             ContextCompat.getMainExecutor(this),
@@ -103,14 +127,18 @@ class VideoAnswerActivity : AppCompatActivity() {
                 override fun onVideoSaved(outputFileResults: VideoCapture.OutputFileResults) {
                     outputUri = outputFileResults.savedUri ?: Uri.fromFile(videoFile)
                     runOnUiThread {
-                        Toast.makeText(this@VideoAnswerActivity, getString(R.string.video_saved), Toast.LENGTH_SHORT).show()
-                        updateUI(false)
+                        Toast.makeText(this@VideoAnswerActivity, "Recording completed", Toast.LENGTH_SHORT).show()
+                        // Auto upload after recording
+                        uploadVideo()
                     }
                 }
                 override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
                     runOnUiThread {
-                        Toast.makeText(this@VideoAnswerActivity, getString(R.string.video_error) + ": $message", Toast.LENGTH_SHORT).show()
-                        updateUI(false)
+                        isRecording = false
+                        updateUI(false, false)
+                        Toast.makeText(this@VideoAnswerActivity, "Recording error: $message", Toast.LENGTH_SHORT).show()
+                        // Even if recording fails, return to next question
+                        finishWithResult(false)
                     }
                 }
             }
@@ -118,18 +146,84 @@ class VideoAnswerActivity : AppCompatActivity() {
     }
 
     private fun stopRecording() {
-        videoCapture?.stopRecording()
-        timer?.cancel()
-        isRecording = false
-        binding.tvTimer.text = "60s"
-        updateUI(false)
+        if (isRecording) {
+            videoCapture?.stopRecording()
+            timer?.cancel()
+            isRecording = false
+            // UI will be updated in onVideoSaved callback
+        }
+    }
+    
+    private fun uploadVideo() {
+        outputFile?.let { file ->
+            if (file.exists()) {
+                isUploading = true
+                updateUI(false, true)
+                
+                lifecycleScope.launch {
+                    videoUploadService.uploadVideoAnswer(
+                        id = sessionId,
+                        questionIndex = questionIndex,
+                        question = questionText,
+                        videoFile = file,
+                        onSuccess = { response ->
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@VideoAnswerActivity,
+                                    "Upload successful! Progress: ${response.progress}%",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                finishWithResult(true)
+                            }
+                        },
+                        onError = { errorMsg ->
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@VideoAnswerActivity,
+                                    "Upload failed, but continuing...",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                // Even if upload fails, return to next question
+                                finishWithResult(false)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    private fun finishWithResult(success: Boolean) {
+        val resultIntent = Intent().apply {
+            putExtra("upload_success", success)
+            putExtra("progress", if (success) 100.0 else 0.0)
+            putExtra("is_completed", false)
+            putExtra("message", if (success) "Upload successful" else "Upload failed")
+        }
+        setResult(RESULT_OK, resultIntent)
+        finish()
     }
 
-    private fun updateUI(recording: Boolean) {
-        binding.btnStartRecord.text = if (recording) getString(R.string.stop_recording) else getString(R.string.start_recording)
-        binding.btnStartRecord.isEnabled = true
-        binding.btnFinish.isEnabled = !recording
-        binding.tvTimer.visibility = View.VISIBLE
+    private fun updateUI(recording: Boolean, uploading: Boolean) {
+        when {
+            recording -> {
+                binding.btnAction.text = "STOP"
+                binding.btnAction.isEnabled = true
+                binding.tvTimer.visibility = View.VISIBLE
+            }
+            uploading -> {
+                binding.btnAction.text = "UPLOADING..."
+                binding.btnAction.isEnabled = false
+                binding.tvTimer.visibility = View.VISIBLE
+                binding.tvTimer.text = "Uploading..."
+            }
+            else -> {
+                binding.btnAction.text = "START"
+                binding.btnAction.isEnabled = true
+                binding.tvTimer.visibility = View.VISIBLE
+                binding.tvTimer.text = "60s"
+            }
+        }
     }
 
     override fun onDestroy() {
