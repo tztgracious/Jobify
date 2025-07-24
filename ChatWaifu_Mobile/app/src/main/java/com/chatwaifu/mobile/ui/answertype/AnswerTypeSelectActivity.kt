@@ -77,7 +77,7 @@ class AnswerTypeSelectActivity : AppCompatActivity() {
             // 不再触发权限申请和跳转
         }
         binding.btnBack.setOnClickListener {
-            val intent = Intent(this, com.chatwaifu.mobile.ui.keywords.KeywordsActivity::class.java)
+            val intent = Intent(this, com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             startActivity(intent)
             finish()

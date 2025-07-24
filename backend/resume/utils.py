@@ -1,85 +1,82 @@
 import json
-import logging
 import os
 import re
 
 import requests
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from interview.models import InterviewSession
+from jobify_backend.logger import logger
 from llama_cloud_services import LlamaParse
 
-from resume.models import Resume
 
-logger = logging.getLogger(__name__)
+def get_session_by_id(session_id: str):
+    """
+    Retrieve an interview session by id.
+    Returns None if not found or if id is invalid.
+    """
+    try:
+        return InterviewSession.objects.get(id=session_id)
+    except (InterviewSession.DoesNotExist, ValueError, ValidationError):
+        logger.error(f"Error retrieving interview session with id {session_id}")
+        return None
 
 
 def grammar_check(text: str) -> dict:
     response = requests.post(
         "https://api.languagetool.org/v2/check",
-        data={"text": text, "language": "en-US"}
+        data={"text": text, "language": "en-US"},
     )
     return response.json()
 
 
-def get_resume_by_doc_id(doc_id):
+def parse_resume(session_id: str):
     """
-    Helper function to retrieve a resume by its doc_id.
-    Returns the Resume object or None if not found or invalid UUID.
+    Parse a résumé asynchronously and update the database.
     """
     try:
-        return Resume.objects.get(id=doc_id)
-    except (Resume.DoesNotExist, ValueError, ValidationError):
-        logger.error(f"Error retrieving resume with doc_id {doc_id}")
-        return None
+        session = InterviewSession.objects.get(id=session_id)
 
-
-def parse_resume(doc_id: str):
-    try:
-        # Get the resume from database
-        resume = Resume.objects.get(id=doc_id)
-        resume_path = resume.local_path
-
-        # Parse the PDF and extract text
-        text = llamaparse_pdf_v1(resume_path)
-
-        # Extract keywords using OpenAI
-        keywords = get_keywords_using_openai(text)
-        
-        # Perform grammar check on uploaded resume
-        grammar_results = None
-        grammar_error = None
+        # Try to parse the résumé
         try:
-            logger.info(f"Starting grammar check for doc_id: {doc_id}")
+            logger.info(f"Starting resume parsing for doc_id: {session_id}")
 
-            # Perform grammar check
-            grammar_results = grammar_check(text)
-            resume.grammar_results = grammar_results
-        except Exception as e:
-            grammar_error = str(e)
-            logger.error(f"Grammar check failed for doc_id: {doc_id}, error: {grammar_error}")
-            # Don't fail the request if grammar check fails
+            # Parse the résumé using LlamaParse
+            parsed_text = llamaparse_pdf_v1(session.resume_local_path)
 
+            # Generate keywords from parsed text
+            keywords = get_keywords_using_openai(parsed_text)
 
-        # Store keywords in database and mark as processed
-        resume.keywords = keywords
-        resume.status = Resume.Status.COMPLETE
-        resume.save()
+            # Run grammar check
+            logger.info(f"Starting grammar check for doc_id: {session_id}")
+            grammar_results = grammar_check(parsed_text)
 
-    except Resume.DoesNotExist:
-        logger.error(f"Resume {doc_id} not found in database")
-        return False
+            # Update resume with results
+            session.keywords = keywords
+            session.grammar_results = grammar_results
+            session.resume_status = InterviewSession.Status.COMPLETE
+            session.save()
+
+        except Exception as grammar_error:
+            logger.error(
+                f"Grammar check failed for doc_id: {session_id}, error: {grammar_error}"
+            )
+            # Still mark as complete even if the grammar check fails
+            session.resume_status = InterviewSession.Status.COMPLETE
+            session.save()
+
+    except InterviewSession.DoesNotExist:
+        logger.error(f"Interview session {session_id} not found in database")
+        return
     except Exception as e:
-        logger.error(f"Error parsing resume {doc_id}: {str(e)}")
-        # Mark as failed processing (still False but we could add a failed status later)
+        logger.error(f"Error parsing resume {session_id}: {str(e)}")
+        # Mark resume as failed
         try:
-            resume = Resume.objects.get(id=doc_id)
-            resume.status = Resume.Status.FAILED
-            resume.save()
+            session = InterviewSession.objects.get(id=session_id)
+            session.resume_status = InterviewSession.Status.FAILED
+            session.save()
         except Exception as e:
-            logger.error(f"Error marking resume {doc_id} as failed: {str(e)}")
-            pass
-        return False
-
-    return True
+            logger.error(f"Error marking resume {session_id} as failed: {str(e)}")
 
 
 def get_keywords_using_openai(text) -> str:
@@ -91,10 +88,13 @@ def get_keywords_using_openai(text) -> str:
             "HTTP-Referer": "jobify.com",  # Optional. Site URL for rankings on openrouter.ai.
             "X-Title": "Jobify",  # Optional. Site title for rankings on openrouter.ai.
         },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [
-                {"role": "user", "content": f"""You are an expert resume analyzer.
+        data=json.dumps(
+            {
+                "model": "openai/gpt-4o",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"""You are an expert resume analyzer.
 
     Your task is to extract **up to 10 distinct English keywords** that best represent the skills, technologies, and important qualifications found in the following resume text.
 
@@ -109,12 +109,14 @@ def get_keywords_using_openai(text) -> str:
     \"\"\"
     {text}
     \"\"\"
-    """}
-            ]
-        })
+    """,
+                    }
+                ],
+            }
+        ),
     )
     response_text = response.json()["choices"][0]["message"]["content"]
-    match = re.search(r'\[.*?\]', response_text, re.DOTALL)
+    match = re.search(r"\[.*?\]", response_text, re.DOTALL)
     try:
         keywords = json.loads(match[0])
     except json.JSONDecodeError:
@@ -128,9 +130,8 @@ def get_file_size_mb(file_size_bytes):
     return round(file_size_bytes / (1024 * 1024), 2)
 
 
-# TODO: get better error message. Rerun a Response object if invalid
 def check_file_size_with_message(file, max_size_mb=5):
-    """Check file size with user-friendly message"""
+    """Check file size."""
     max_size_bytes = max_size_mb * 1024 * 1024
 
     if file.size > max_size_bytes:
@@ -141,10 +142,6 @@ def check_file_size_with_message(file, max_size_mb=5):
 
 
 def llamaparse_pdf_v1(resume_path) -> str:
-    # Handle relative path by combining with MEDIA_ROOT
-    from django.conf import settings
-    import os
-
     if not os.path.isabs(resume_path):
         full_path = os.path.join(settings.MEDIA_ROOT, resume_path)
     else:
@@ -165,8 +162,8 @@ def llamaparse_pdf_v1(resume_path) -> str:
 
     # access the raw job result
     # Items will vary based on the parser configuration
-    for page in result.pages:
-        print(page.text)
+    # for page in result.pages:
+    #     print(page.text)
     #     print(page.md)
     #     print(page.images)
     #     print(page.layout)

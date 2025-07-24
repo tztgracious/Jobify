@@ -58,6 +58,8 @@
             android:name=".ui.solution.SolutionActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.techinterview.TechInterviewActivity" />
+        <activity
             android:name=".ChatActivity"
             android:exported="true"
             android:screenOrientation="portrait" />
