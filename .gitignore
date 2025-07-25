@@ -115,3 +115,6 @@ graphrag-api/graphrag/openl/cache/
 
 # pip-tools
 *.txt~ 
+
+#test code for multi agent 
+backend/interview/test_multi_agent.py
