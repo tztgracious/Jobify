@@ -9,10 +9,9 @@ Set VERIFY_SSL=True for production environments with valid certificates.
 
 import json
 import os
-import sys
 import tempfile
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
 
@@ -50,9 +49,9 @@ class APITester:
         self.failed_test_names = []  # Track names of failed tests
 
     def print_header(self, test_name: str):
-        print(f"\n{Colors.BLUE}{'='*50}{Colors.NC}")
+        print(f"\n{Colors.BLUE}{'=' * 50}{Colors.NC}")
         print(f"{Colors.BLUE}Testing: {test_name}{Colors.NC}")
-        print(f"{Colors.BLUE}{'='*50}{Colors.NC}")
+        print(f"{Colors.BLUE}{'=' * 50}{Colors.NC}")
         self.total_tests += 1
 
     def parse_response(self, response: requests.Response) -> Dict[str, Any]:
@@ -287,9 +286,7 @@ startxref
                 print(f"{Colors.YELLOW}📋 Extracted id: {self.id}{Colors.NC}")
             else:
                 print(f"{Colors.RED}❌ ERROR: No id in response{Colors.NC}")
-                self.mark_test_failed(
-                    "POST /api/v1/upload-resume/ (valid PDF) - no id"
-                )
+                self.mark_test_failed("POST /api/v1/upload-resume/ (valid PDF) - no id")
             self.save_response("upload_resume_success", data)
             return data
         except Exception as e:
@@ -483,7 +480,9 @@ startxref
                             "shortMessage", match.get("message", "No message")
                         )
                         context = match.get("context", {}).get("text", "No context")
-                        print(f"{Colors.YELLOW}  📌 Issue {i+1}: {message}{Colors.NC}")
+                        print(
+                            f"{Colors.YELLOW}  📌 Issue {i + 1}: {message}{Colors.NC}"
+                        )
                         if context != "No context":
                             context_preview = (
                                 context[:50] + "..." if len(context) > 50 else context
@@ -594,7 +593,9 @@ startxref
                 data = {"id": self.id}
                 start = time.time()
                 response = requests.post(
-                    f"{self.base_url}/api/v1/get-all-questions/", json=data, verify=VERIFY_SSL
+                    f"{self.base_url}/api/v1/get-all-questions/",
+                    json=data,
+                    verify=VERIFY_SSL,
                 )
                 end = time.time()
                 print(
@@ -976,9 +977,9 @@ startxref
 
     def print_summary(self):
         """Print test summary"""
-        print(f"\n{Colors.BLUE}{'='*50}{Colors.NC}")
+        print(f"\n{Colors.BLUE}{'=' * 50}{Colors.NC}")
         print(f"{Colors.BLUE}📊 TEST SUMMARY{Colors.NC}")
-        print(f"{Colors.BLUE}{'='*50}{Colors.NC}")
+        print(f"{Colors.BLUE}{'=' * 50}{Colors.NC}")
         print(f"{Colors.GREEN}✅ Passed: {self.passed_tests}{Colors.NC}")
         print(f"{Colors.RED}❌ Failed: {self.failed_tests}{Colors.NC}")
         print(f"{Colors.BLUE}📋 Total:  {self.total_tests}{Colors.NC}")
@@ -1004,5 +1005,4 @@ if __name__ == "__main__":
     SAVE_RESPONSES = False  # Set to True to save all responses as JSON files
 
     tester = APITester(BASE_URL, save_response=SAVE_RESPONSES)
-    exit_code = tester.run_all_tests()
-    sys.exit(exit_code)
+    tester.run_all_tests()

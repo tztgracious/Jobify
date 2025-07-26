@@ -9,10 +9,18 @@ class InterviewSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = InterviewSession
         fields = [
-            'id', 'resume', 'doc_id', 'questions', 'answers', 'feedback',
-            'created_at', 'updated_at', 'is_completed', 'progress'
+            "id",
+            "resume",
+            "doc_id",
+            "questions",
+            "answers",
+            "feedback",
+            "created_at",
+            "updated_at",
+            "is_completed",
+            "progress",
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class InterviewSessionCreateSerializer(serializers.ModelSerializer):
@@ -20,7 +28,7 @@ class InterviewSessionCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = InterviewSession
-        fields = ['resume', 'doc_id', 'questions']
+        fields = ["resume", "doc_id", "questions"]
 
 
 class InterviewSessionAnswerSerializer(serializers.ModelSerializer):
@@ -28,4 +36,4 @@ class InterviewSessionAnswerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = InterviewSession
-        fields = ['answers', 'is_completed']
+        fields = ["answers", "is_completed"]

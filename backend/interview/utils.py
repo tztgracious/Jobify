@@ -1,21 +1,24 @@
 import json
 import os
-
+import json
+import re
 import requests
-from deepgram import (
-    DeepgramClient,
-    PrerecordedOptions,
-)
-from rest_framework.response import Response
-
+from typing import List, Dict, Any
+from dataclasses import dataclass
+from enum import Enum
+import asyncio
+import aiohttp
+from concurrent.futures import ThreadPoolExecutor
+import random
+import requests
+from deepgram import DeepgramClient, PrerecordedOptions
+from django.conf import settings
 from interview.models import InterviewSession
 from jobify_backend.logger import logger
-import os
-import uuid
-from django.conf import settings
-from jobify_backend.logger import logger
 from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
-    
+from rest_framework.response import Response
+
+
 def get_questions_using_openai(session):
     target_job = session.target_job
     keywords = session.keywords
@@ -44,12 +47,12 @@ def get_questions_using_openai(session):
             "HTTP-Referer": "jobify.com",
             "X-Title": "Jobify",
         },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        })
+        data=json.dumps(
+            {
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        ),
     )
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
@@ -116,12 +119,12 @@ def get_feedback_using_openai_text(interview_session):
             "HTTP-Referer": "jobify.com",
             "X-Title": "Jobify",
         },
-        data=json.dumps({
-            "model": "openai/gpt-4o",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        })
+        data=json.dumps(
+            {
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        ),
     )
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
@@ -131,266 +134,414 @@ def get_feedback_using_openai_text(interview_session):
         return []
     return feedbacks
 
+def clean_json_response(response_text):
+    """Clean markdown formatting from JSON responses"""
+    
+    # Remove leading/trailing whitespace
+    cleaned = response_text.strip()
+    
+    # Method 1: Remove markdown code blocks
+    if cleaned.startswith("```json"):
+        # Remove opening ```json
+        cleaned = cleaned[7:]
+        # Remove closing ```
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+    elif cleaned.startswith("```"):
+        # Remove generic code blocks
+        cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+    
+    # Method 2: Extract JSON using regex (more robust)
+    # This finds the first { and last } to extract just the JSON object
+    json_match = re.search(r'\{[^{}]*\{.*\}[^{}]*\}|\{[^{}]*\}', cleaned, re.DOTALL)
+    if json_match:
+        cleaned = json_match.group()
+    
+    return cleaned
 
-def get_feedback_using_openai_video(interview_session):
+class InterviewerRole(Enum):
+    HR_RECRUITER = "HR Recruiter"
+    TECHNICAL_LEAD = "Technical Lead"
+    HIRING_MANAGER = "Hiring Manager"
+    INDUSTRY_EXPERT = "Industry Expert"
+    SENIOR_PEER = "Senior Peer"
+
+
+class BaseAgent:
+    """Base class for all interview agents"""
+    
+    def __init__(self, role: InterviewerRole, api_key: str):
+        self.role = role
+        self.api_key = api_key
+        self.personality = self._define_personality()
+    
+    def _define_personality(self) -> str:
+        """Define the personality and focus for each agent type"""
+        personalities = {
+            InterviewerRole.HR_RECRUITER: """You are an experienced HR recruiter who focuses on:
+                - Cultural fit and company values alignment
+                - Communication skills and interpersonal abilities
+                - Career motivation and growth mindset
+                - Conflict resolution and teamwork
+                - Work-life balance and expectations""",
+            
+            InterviewerRole.TECHNICAL_LEAD: """You are a senior technical lead who evaluates:
+                - Technical proficiency and coding skills
+                - System design and architecture understanding
+                - Problem-solving approach and analytical thinking
+                - Knowledge of best practices and design patterns
+                - Ability to explain complex technical concepts""",
+            
+            InterviewerRole.HIRING_MANAGER: """You are a hiring manager who assesses:
+                - Practical experience and project management
+                - Business acumen and strategic thinking
+                - Leadership potential and initiative
+                - Ability to deliver results and meet deadlines
+                - Cross-functional collaboration skills""",
+            
+            InterviewerRole.INDUSTRY_EXPERT: """You are an industry expert who examines:
+                - Current industry trends and technologies
+                - Competitive landscape knowledge
+                - Innovation and adaptability
+                - Domain-specific expertise
+                - Understanding of market challenges""",
+            
+            InterviewerRole.SENIOR_PEER: """You are a senior peer who explores:
+                - Technical collaboration and mentoring abilities
+                - Code review and feedback skills
+                - Team dynamics and communication
+                - Knowledge sharing and documentation
+                - Day-to-day work scenarios"""
+        }
+        return personalities.get(self.role, "You are a professional interviewer.")
+    
+    def generate_question_sync(self, target_job: str, keywords: List[str]) -> Dict[str, Any]:
+        """Synchronous version of question generation"""
+        prompt = f"""{self.personality}
+        
+        You're interviewing for: {target_job}
+        Key skills/keywords: {', '.join(keywords)}
+        
+        Generate ONE realistic interview question that you would ask in a real interview.
+        The question should be specific to your role as {self.role.value} and your focus areas.
+        
+        Return ONLY a valid JSON object with this structure:
+        {{
+            "question": "Your question here",
+            "focus_area": "The main skill or area this question assesses",
+            "difficulty": 3
+        }}
+        
+        Difficulty scale: 1 (basic) to 5 (very challenging)
+        Make the question practical and scenario-based when possible.
+        Do not include any explanation or markdown, just the JSON.
+        """
+        
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openai/gpt-4o",
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+            )
+            
+            response_text = response.json()["choices"][0]["message"]["content"]
+            # Clean and parse the response
+            cleaned_text = clean_json_response(response_text)
+            question_data = json.loads(cleaned_text)
+            
+            return {
+                "question": question_data["question"],
+                "interviewer_role": self.role.value,
+                "focus_area": question_data.get("focus_area", "General"),
+                "difficulty": question_data.get("difficulty", 3)
+            }
+        except Exception as e:
+            print(f"Error generating question for {self.role.value}: {e}")
+            print(response_text)
+            return {
+                "question": f"Tell me about your experience with {keywords[0] if keywords else 'this role'}.",
+                "interviewer_role": self.role.value,
+                "focus_area": "General Experience",
+                "difficulty": 2
+            }
+    
+    def evaluate_answer_sync(self, question: str, answer: str, target_job: str, keywords: List[str]) -> Dict[str, Any]:
+        """Synchronous version of answer evaluation"""
+        prompt = f"""{self.personality}
+        
+        Job: {target_job}
+        Required skills: {', '.join(keywords)}
+        
+        Question asked: "{question}"
+        Candidate's answer: "{answer}"
+        
+        Evaluate this answer from your specific perspective as a {self.role.value}.
+        
+        Return ONLY a valid JSON object:
+        {{
+            "score": 7,
+            "strengths": ["strength1", "strength2"],
+            "weaknesses": ["weakness1", "weakness2"],
+            "specific_feedback": "Detailed feedback from your role's perspective",
+            "improvement_tips": ["tip1", "tip2"]
+        }}
+        
+        Score should be out of 10. Do not include any explanation or markdown, just the JSON.
+        """
+        
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openai/gpt-4o",
+                    "messages": [{"role": "user", "content": prompt}],
+                        
+                }
+            )
+            response_text = response.json()["choices"][0]["message"]["content"]
+            cleaned_text = clean_json_response(response_text)
+            return json.loads(cleaned_text)
+        except Exception as e:
+            print(f"Error evaluating answer for {self.role.value}: {e}")
+            print(response_text)
+            return {
+                "score": 5,
+                "strengths": ["Attempted to answer"],
+                "weaknesses": ["Could not evaluate properly"],
+                "specific_feedback": "Error in evaluation",
+                "improvement_tips": ["Try to provide more specific examples"]
+            }
+
+
+def get_questions_using_openai_multi_agent(target_job, keywords):
+    """Multi-agent version that maintains the same interface as the original function"""
+    api_key = os.getenv('OPEN_ROUTER_API_KEY')
+    
+    # Select which agents to use based on the job type
+    selected_roles = _select_agent_roles_for_job(target_job, num_agents=3)
+    
+    # Create agents
+    agents = [BaseAgent(role, api_key) for role in selected_roles]
+    
+    # Generate questions from each agent
+    questions_data = []
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [
+            executor.submit(agent.generate_question_sync, target_job, keywords)
+            for agent in agents
+        ]
+        
+        for future in futures:
+            question_data = future.result()
+            questions_data.append(question_data)
+    
+    # Sort by difficulty for better flow
+    questions_data.sort(key=lambda q: q.get("difficulty", 3))
+    
+    # Return just the question texts to maintain compatibility
+    return [q["question"] for q in questions_data]
+
+
+def get_feedback_using_openai_multi_agent(resume, interview_session):
+    """Multi-agent version that maintains the same interface as the original function"""
+    api_key = os.getenv('OPEN_ROUTER_API_KEY')
+    
     questions = interview_session.questions
     answers = interview_session.answers
-    tech_questions = interview_session.tech_questions
-    tech_answers = interview_session.tech_answers
-    target_job = interview_session.target_job
-    keywords = interview_session.keywords
-    prompt = f"""
-    You are a professional interview coach.
-    """
-    return Response({"error": "Not implemented yet. Please use text feedback for now."}, status=501)
+    target_job = resume.target_job
+    keywords = resume.keywords
+    
+    # Get feedback from multiple agents
+    all_feedback = []
+    
+    # For each question, get feedback from 2-3 different agents
+    for i, (question, answer) in enumerate(zip(questions, answers)):
+        # Select different agents for each question to get diverse perspectives
+        reviewing_roles = _select_reviewing_roles(i)
+        agents = [BaseAgent(role, api_key) for role in reviewing_roles]
+        
+        # Collect feedback from each agent
+        question_feedback = []
+        with ThreadPoolExecutor(max_workers=len(agents)) as executor:
+            futures = [
+                executor.submit(agent.evaluate_answer_sync, question, answer, target_job, keywords)
+                for agent in agents
+            ]
+            
+            for future in futures:
+                feedback = future.result()
+                question_feedback.append(feedback)
+        
+        all_feedback.append(question_feedback)
+    
+    # Synthesize feedback from all agents
+    synthesized_feedback = _synthesize_feedback(questions, answers, all_feedback, target_job, keywords, api_key)
+    
+    # Format to match expected output
+    formatted_feedback = {
+        "question_1_feedback": synthesized_feedback["question_feedback"][0],
+        "question_2_feedback": synthesized_feedback["question_feedback"][1],
+        "question_3_feedback": synthesized_feedback["question_feedback"][2],
+        "summary": synthesized_feedback["summary"],
+        
+    }
+    
+    return formatted_feedback
 
-def extract_audio_from_video(video_file):
-    """
-    Extract audio from video file and return the path to the temporary audio file.
-    Returns None if extraction fails.
-    """
-    import subprocess
-    import tempfile
 
-    try:
-        # Create a temporary file for the extracted audio
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio:
-            temp_audio_path = temp_audio.name
-
-        # Extract audio from video using ffmpeg
-        # This command extracts audio and converts it to MP3
-        ffmpeg_command = [
-            'ffmpeg',
-            '-i', video_file.temporary_file_path(),  # Input video file
-            '-vn',  # No video
-            '-acodec', 'mp3',  # Audio codec
-            '-ar', '16000',  # Sample rate (16kHz is good for speech recognition)
-            '-ac', '1',  # Mono audio
-            '-y',  # Overwrite output file
-            temp_audio_path
+def _select_agent_roles_for_job(target_job: str, num_agents: int) -> List[InterviewerRole]:
+    """Select appropriate agent roles based on the job type"""
+    job_lower = target_job.lower()
+    
+    # Prioritize agents based on job type
+    if any(tech in job_lower for tech in ['engineer', 'developer', 'programmer', 'architect', 'technical']):
+        priority_order = [
+            InterviewerRole.TECHNICAL_LEAD,
+            InterviewerRole.HIRING_MANAGER,
+            InterviewerRole.SENIOR_PEER,
+            InterviewerRole.HR_RECRUITER,
+            InterviewerRole.INDUSTRY_EXPERT
         ]
+    elif any(mgmt in job_lower for mgmt in ['manager', 'director', 'lead', 'head']):
+        priority_order = [
+            InterviewerRole.HIRING_MANAGER,
+            InterviewerRole.HR_RECRUITER,
+            InterviewerRole.INDUSTRY_EXPERT,
+            InterviewerRole.SENIOR_PEER,
+            InterviewerRole.TECHNICAL_LEAD
+        ]
+    elif any(design in job_lower for design in ['designer', 'ux', 'ui', 'creative']):
+        priority_order = [
+            InterviewerRole.HIRING_MANAGER,
+            InterviewerRole.SENIOR_PEER,
+            InterviewerRole.HR_RECRUITER,
+            InterviewerRole.INDUSTRY_EXPERT,
+            InterviewerRole.TECHNICAL_LEAD
+        ]
+    else:
+        # Default order
+        priority_order = [
+            InterviewerRole.HIRING_MANAGER,
+            InterviewerRole.HR_RECRUITER,
+            InterviewerRole.SENIOR_PEER,
+            InterviewerRole.INDUSTRY_EXPERT,
+            InterviewerRole.TECHNICAL_LEAD
+        ]
+    
+    return priority_order[:num_agents]
 
-        # Run ffmpeg command
-        subprocess.run(ffmpeg_command, check=True, capture_output=True)
 
-        return temp_audio_path
+def _select_reviewing_roles(question_index: int) -> List[InterviewerRole]:
+    """Select 2-3 agent roles to review each answer for diverse perspectives"""
+    all_roles = list(InterviewerRole)
+    
+    # Rotate through roles to ensure variety
+    # Use question index to deterministically select different reviewers
+    start_idx = (question_index * 2) % len(all_roles)
+    
+    reviewing_roles = []
+    num_reviewers = 2 if question_index < 2 else 3  # More reviewers for later questions
+    
+    for i in range(num_reviewers):
+        idx = (start_idx + i) % len(all_roles)
+        reviewing_roles.append(all_roles[idx])
+    
+    return reviewing_roles
 
-    except subprocess.CalledProcessError as e:
-        print(f"FFmpeg error: {e}")
-        return None
-    except Exception as e:
-        print(f"Audio extraction exception: {e}")
-        return None
 
-
-def audio_transcription(video_file):
+def _synthesize_feedback(questions: List[str], answers: List[str], 
+                        all_feedback: List[List[Dict]], target_job: str, 
+                        keywords: List[str], api_key: str) -> Dict[str, Any]:
+    """Synthesize feedback from multiple agents into cohesive feedback"""
+    
+    # Prepare structured feedback data
+    structured_feedback = []
+    for i, (question, answer) in enumerate(zip(questions, answers)):
+        question_feedbacks = all_feedback[i]
+        
+        # Calculate average score and compile feedback
+        avg_score = sum(f.get("score", 5) for f in question_feedbacks) / len(question_feedbacks)
+        all_strengths = [s for f in question_feedbacks for s in f.get("strengths", [])]
+        all_weaknesses = [w for f in question_feedbacks for w in f.get("weaknesses", [])]
+        all_tips = [t for f in question_feedbacks for t in f.get("improvement_tips", [])]
+        
+        structured_feedback.append({
+            "question": question,
+            "answer": answer,
+            "avg_score": avg_score,
+            "strengths": list(set(all_strengths))[:3],  # Top 3 unique strengths
+            "weaknesses": list(set(all_weaknesses))[:3],  # Top 3 unique weaknesses
+            "tips": list(set(all_tips))[:3]  # Top 3 unique tips
+        })
+    
+    # Use AI to synthesize into final feedback
+    synthesis_prompt = f"""You are a senior interview coach synthesizing feedback from multiple interviewers.
+    
+    Job: {target_job}
+    Skills: {', '.join(keywords)}
+    
+    Interview feedback from multiple reviewers:
+    {json.dumps(structured_feedback, indent=2)}
+    
+    Create comprehensive, actionable feedback for each question and an overall summary.
+    
+    Return ONLY a valid JSON object:
+    {{
+        "question_feedback": [
+            "Detailed, constructive feedback for question 1 that combines all reviewer perspectives",
+            "Detailed, constructive feedback for question 2 that combines all reviewer perspectives", 
+            "Detailed, constructive feedback for question 3 that combines all reviewer perspectives"
+        ],
+        "summary": "Overall assessment with specific, actionable advice for improvement. Include the candidate's key strengths and areas to focus on for this role."
+    }}
+    
+    Make the feedback specific, balanced, and actionable. Do not include JSON formatting or markdown.
     """
-    Transcribe audio from the uploaded video file using a speech-to-text API.
-    """
+    
     try:
-        # Extract audio from video
-        temp_audio_path = extract_audio_from_video(video_file)
-        if not temp_audio_path:
-            return None
-
-        # STEP 1 Create a Deepgram client using the API key from environment
-        deepgram = DeepgramClient(api_key=os.getenv("DEEPGRAM_API_KEY"))
-
-        # Read the extracted audio file
-        with open(temp_audio_path, "rb") as file:
-            buffer_data = file.read()
-
-        payload = {
-            "buffer": buffer_data,
-        }
-
-        # STEP 2: Configure Deepgram options for audio analysis
-        options = PrerecordedOptions(
-            model="nova-3",
-            smart_format=True,
-            filler_words=True,
-            punctuate=True,
-            measurements=True,
-            language="en-US",
-            diarize=True,  # Can help with speech analysis
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": synthesis_prompt}]
+            }
         )
-
-        # STEP 3: Call the transcribe_file method with the text payload and options
-        response = deepgram.listen.rest.v("1").transcribe_file(payload, options)
-
-        # Clean up temporary file
-        os.unlink(temp_audio_path)
-
-        return response
-
-    except Exception as e:
-        print(f"Transcription exception: {e}")
-        return None
-
-
-def get_feedback_video(video_file, doc_id):
-    """
-    Process the uploaded video file, extract audio, and get feedback using OpenAI.
-    Returns a dictionary with feedback or an error message.
-    """
-    try:
-        # Extract audio from video
-        temp_audio_path = extract_audio_from_video(video_file)
-        if not temp_audio_path:
-            return {"error": "Failed to extract audio from video file."}
-
-        # TODO: Implement feedback retrieval using OpenAI
-
-        return "feedback"
-
-    except Exception as e:
-        print(f"Error processing video file: {e}")
-        return {"error": "An error occurred while processing the video file."}
-
-
-def process_text_answer(session_id, question_index, question_text, answer, interview_session):
-    """
-    Process a text answer for an interview question.
-    
-    Args:
-        session_id (str): The interview session ID
-        question_index (int): Index of the question being answered
-        question_text (str): The question text for validation
-        answer (str): The text answer provided
-        interview_session (InterviewSession): The interview session object
         
-    Returns:
-        dict: Response data containing answer information and status
-    """
-    
-    
-    # Validate that the question text matches the stored question
-    stored_question = interview_session.questions[question_index]
-    if question_text.strip() != stored_question.strip():
-        logger.warning(f"Question mismatch for id {session_id}, question_index {question_index}")
-        return {
-            "error": "Question text does not match the stored question",
-            "expected_question": stored_question,
-            "provided_question": question_text,
-            "status": 400
-        }
-
-    # Initialize answers list if needed (pad with empty strings)
-    if len(interview_session.answers) < len(interview_session.questions):
-        interview_session.answers = [''] * len(interview_session.questions)
-
-    # Update the specific answer
-    interview_session.answers[question_index] = answer
-
-    # Check if all questions are answered
-    answered_count = len([ans for ans in interview_session.answers if ans and ans.strip()])
-    is_completed = answered_count == len(interview_session.questions)
-    interview_session.is_completed = is_completed
-
-    interview_session.save()
-
-    logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with text answer")
-
-    # Return success response data
-    return {
-        "id": session_id,
-        "message": f"Text answer submitted for question {question_index + 1}",
-        "question": stored_question,
-        "answer_type": "text",
-        "answer": answer,
-        "progress": interview_session.progress,
-        "is_completed": is_completed,
-        "status": 200
-    }
-
-
-def process_video_answer(session_id, question_index, question_text, video_file, interview_session):
-    """
-    Process a video answer for an interview question.
-    
-    Args:
-        session_id (str): The interview session ID
-        question_index (int): Index of the question being answered
-        video_file: The uploaded video file
-        question_text (str): The question text for validation
-        interview_session (InterviewSession): The interview session object
+        response_text = response.json()["choices"][0]["message"]["content"]
+        synthesized = json.loads(response_text)
         
-    Returns:
-        dict: Response data containing video information and status
-    """
-
-    
-    # Validate video file size
-    if video_file.size > MAX_VIDEO_FILE_SIZE:
-        logger.warning(f"Video file too large for id {session_id}: {video_file.size} bytes")
-        return {
-            "error": f"Video file size too large. Maximum allowed size is 75MB, but received {video_file.size / (1024 * 1024):.1f}MB",
-            "status": 413
-        }
-
-    # Validate that the question text matches the stored question
-    stored_question = interview_session.questions[question_index]
-    if question_text.strip() != stored_question.strip():
-        logger.warning(f"Question mismatch for id {session_id}, question_index {question_index}")
-        return {
-            "error": "Question text does not match the stored question",
-            "expected_question": stored_question,
-            "provided_question": question_text,
-            "status": 400
-        }
-
-    # Create videos directory if it doesn't exist
-    video_dir = os.path.join(settings.MEDIA_ROOT, 'interview_videos')
-    os.makedirs(video_dir, exist_ok=True)
-
-    # Generate unique filename for the video answer
-    file_extension = os.path.splitext(video_file.name)[1]
-    unique_filename = f"{session_id}_q{question_index}_{uuid.uuid4().hex}{file_extension}"
-    file_path = os.path.join(video_dir, unique_filename)
-
-    try:
-        # Save the video file
-        with open(file_path, 'wb+') as destination:
-            for chunk in video_file.chunks():
-                destination.write(chunk)
-        
-        # Store the relative path as the answer
-        video_path = f"videos/{unique_filename}"
-        logger.info(f"Video answer saved for id {session_id}, question {question_index}: {file_path}")
+        return synthesized
         
     except Exception as e:
-        logger.error(f"Failed to save video answer for id {session_id}, question {question_index}: {str(e)}")
+        print(f"Error synthesizing feedback: {e}")
+        # Fallback to simple concatenation
         return {
-            "error": "Failed to save video file",
-            "status": 500
+            "question_feedback": [
+                f"For '{q['question']}': Strengths include {', '.join(q['strengths'][:2]) if q['strengths'] else 'good attempt'}. "
+                f"Areas to improve: {', '.join(q['weaknesses'][:2]) if q['weaknesses'] else 'provide more specific examples'}. "
+                f"Tips: {', '.join(q['tips'][:2]) if q['tips'] else 'practice similar questions'}."
+                for q in structured_feedback
+            ],
+            "summary": f"Overall performance shows potential for the {target_job} role. "
+                      f"Focus on demonstrating stronger expertise in {', '.join(keywords[:3])}. "
+                      f"Practice providing specific examples from your experience.",
+            "structured_feedback":structured_feedback
         }
-
-    # Initialize answers list if needed (pad with empty strings)
-    if len(interview_session.answers) < len(interview_session.questions):
-        interview_session.answers = [''] * len(interview_session.questions)
-
-    # Update the specific answer
-    interview_session.answers[question_index] = video_path
-
-    # Check if all questions are answered
-    answered_count = len([ans for ans in interview_session.answers if ans and ans.strip()])
-    is_completed = answered_count == len(interview_session.questions)
-    interview_session.is_completed = is_completed
-
-    interview_session.save()
-
-    logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with video answer")
-
-    # Return success response data
-    return {
-        "id": session_id,
-        "message": f"Video answer submitted for question {question_index + 1}",
-        "question": stored_question,
-        "answer_type": "video",
-        "video_path": video_path,
-        "video_filename": video_file.name,
-        "video_size": video_file.size,
-        "progress": interview_session.progress,
-        "is_completed": is_completed,
-        "status": 200
-    }

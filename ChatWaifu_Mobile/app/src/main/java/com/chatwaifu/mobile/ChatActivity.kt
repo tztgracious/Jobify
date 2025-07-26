@@ -19,6 +19,11 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 接收答题模式参数
+        val answerMode = intent.getStringExtra("answer_mode") ?: "text"
+        chatViewModel.setAnswerMode(answerMode)
+        
         setContentView(
             ComposeView(this).apply {
                 setContent {
@@ -42,32 +47,22 @@ class ChatActivity : AppCompatActivity() {
         chatViewModel.refreshAllKeys()
         chatViewModel.mainLoop()
     }
+    
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            showToast("no permission...")
-            finish()
+        if (permissions.isNotEmpty() && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            showToast("Permission granted")
+        } else {
+            showToast("Permission denied")
         }
     }
-
-    override fun onSupportNavigateUp(): Boolean {
-        return findNavController().navigateUp() || super.onSupportNavigateUp()
-    }
-
-    override fun onBackPressed() {
-        val intent = android.content.Intent(this, com.chatwaifu.mobile.ui.answertype.AnswerTypeSelectActivity::class.java)
-        intent.flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
-        startActivity(intent)
-        finish()
-    }
-
+    
     private fun findNavController(): NavController {
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         return navHostFragment.navController
     }
 }

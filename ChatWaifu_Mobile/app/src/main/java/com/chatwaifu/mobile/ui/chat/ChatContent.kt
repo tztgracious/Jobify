@@ -68,6 +68,16 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.mutableStateListOf
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.*
+import com.chatwaifu.mobile.ui.questions.VideoAnswerActivity
 
 /**
  * Description: Chat Page
@@ -285,10 +295,12 @@ fun ChatContent(
                             onSendMsgButtonClick(answer)
                             currentQuestionIndex++
                         },
-                        enabled = true
+                        enabled = true,
+                        chatActivityViewModel = chatActivityViewModel,
+                        currentQuestionIndex = currentQuestionIndex
                     )
                 } else {
-                    // 用白色bar包裹Complete按钮
+                    // Complete button area
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -487,23 +499,79 @@ fun TouchIndicatorPreview() {
 @Composable
 fun AnswerInputAreaWithTimer(
     onSend: (String) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    chatActivityViewModel: ChatActivityViewModel? = null,
+    currentQuestionIndex: Int = 0
 ) {
     var answerText by rememberSaveable { mutableStateOf("") }
     var timerStarted by rememberSaveable { mutableStateOf(false) }
-    var timeLeft by rememberSaveable { mutableStateOf(60) } // 秒
+    var timeLeft by rememberSaveable { mutableStateOf(60) }
     var inputEnabled by rememberSaveable { mutableStateOf(true) }
+    
+    // 获取答题模式
+    val answerMode by chatActivityViewModel?.answerModeLiveData?.observeAsState() ?: remember { mutableStateOf("text") }
+    
+    // 视频模式准备状态
+    var preparationTimeLeft by rememberSaveable { mutableStateOf(30) }
+    var isPreparationStarted by rememberSaveable { mutableStateOf(false) }
+    
+    val context = LocalContext.current
 
-    // 监听输入，启动倒计时
-    LaunchedEffect(answerText) {
-        if (answerText.isNotBlank() && !timerStarted) {
-            timerStarted = true
+    // 监听新问题，如果是视频模式则开始准备倒计时
+    LaunchedEffect(currentQuestionIndex, answerMode) {
+        if (answerMode == "video" && enabled) {
+            isPreparationStarted = true
+            preparationTimeLeft = 30
         }
     }
 
-    // 倒计时逻辑
-    LaunchedEffect(timerStarted, inputEnabled, enabled) {
-        if (timerStarted && inputEnabled && enabled) {
+    // 视频录制结果处理
+    val videoRecordLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uploadSuccess = result.data?.getBooleanExtra("upload_success", false) ?: false
+            if (uploadSuccess) {
+                onSend("Video answer uploaded")
+            } else {
+                // 上传失败但继续下一题
+                onSend("Video answer completed")
+            }
+            isPreparationStarted = false
+            preparationTimeLeft = 30
+        } else {
+            // 失败或取消时也进入下一题
+            onSend("Video answer completed")
+            isPreparationStarted = false
+            preparationTimeLeft = 30
+        }
+    }
+
+    // 视频模式30s准备倒计时
+    LaunchedEffect(isPreparationStarted, answerMode) {
+        if (isPreparationStarted && answerMode == "video") {
+            while (preparationTimeLeft > 0 && isPreparationStarted) {
+                delay(1000)
+                preparationTimeLeft -= 1
+            }
+            if (preparationTimeLeft == 0 && isPreparationStarted) {
+                // 时间到，直接进入录制界面
+                val sessionInfo = chatActivityViewModel?.getCurrentSessionInfo()
+                val intent = Intent(context, VideoAnswerActivity::class.java).apply {
+                    putExtra("session_id", sessionInfo?.first ?: "default_session")
+                    putExtra("question_index", sessionInfo?.second ?: 0)
+                    putExtra("question_text", sessionInfo?.third ?: "Please answer this question")
+                }
+                videoRecordLauncher.launch(intent)
+                isPreparationStarted = false
+            }
+        }
+    }
+
+    // 文本模式倒计时逻辑
+    LaunchedEffect(timerStarted, inputEnabled, enabled, answerMode) {
+        if (timerStarted && inputEnabled && enabled && answerMode == "text") {
             while (timeLeft > 0 && inputEnabled && enabled) {
                 delay(1000)
                 timeLeft -= 1
@@ -513,7 +581,6 @@ fun AnswerInputAreaWithTimer(
                 if (answerText.isNotBlank()) {
                     onSend(answerText)
                 }
-                // 自动提交后重置状态
                 answerText = ""
                 timerStarted = false
                 timeLeft = 60
@@ -522,38 +589,141 @@ fun AnswerInputAreaWithTimer(
         }
     }
 
+    // 监听文本输入
+    LaunchedEffect(answerText) {
+        if (answerText.isNotBlank() && !timerStarted && answerMode == "text") {
+            timerStarted = true
+        }
+    }
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(16.dp)
     ) {
-        if (timerStarted && inputEnabled && enabled) {
-            Text("Time left: $timeLeft s", color = Color.Red)
-        }
-        OutlinedTextField(
-            value = answerText,
-            onValueChange = {
-                if (inputEnabled && enabled) answerText = it
-            },
-            placeholder = { Text("Please enter your answer...") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = inputEnabled && enabled
-        )
-        Button(
-            onClick = {
-                if (answerText.isNotBlank()) {
-                    onSend(answerText)
-                    answerText = ""
-                    timerStarted = false
-                    timeLeft = 60
-                    inputEnabled = true
+        when (answerMode) {
+            "text" -> {
+                // 文本输入模式
+                if (timerStarted) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Time remaining: ${timeLeft}s",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (timeLeft <= 10) Color.Red else Color.Gray
+                        )
+                        if (timeLeft <= 10) {
+                            Text(
+                                text = "Auto-submit soon",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Red
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-            },
-            enabled = inputEnabled && enabled && answerText.isNotBlank(),
-            modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
-        ) {
-            Text("Send")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    OutlinedTextField(
+                        value = answerText,
+                        onValueChange = { 
+                            if (inputEnabled && enabled) {
+                                answerText = it
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Please enter your answer...") },
+                        enabled = inputEnabled && enabled,
+                        maxLines = 4,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (answerText.isNotBlank()) {
+                                onSend(answerText)
+                                answerText = ""
+                                timerStarted = false
+                                timeLeft = 60
+                                inputEnabled = true
+                            }
+                        },
+                        enabled = answerText.isNotBlank() && inputEnabled && enabled,
+                        modifier = Modifier.height(56.dp)
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = "Send")
+                    }
+                }
+            }
+            
+            "video" -> {
+                // 视频模式
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isPreparationStarted) {
+                            // 准备阶段
+                            Text(
+                                text = "Get Ready",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "Preparation time: ${preparationTimeLeft}s",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = if (preparationTimeLeft <= 5) Color.Red else Color(0xFF2196F3)
+                            )
+                            Text(
+                                text = "Think about how to answer this question",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    // 提前开始录制
+                                    isPreparationStarted = false
+                                    val sessionInfo = chatActivityViewModel?.getCurrentSessionInfo()
+                                    val intent = Intent(context, VideoAnswerActivity::class.java).apply {
+                                        putExtra("session_id", sessionInfo?.first ?: "default_session")
+                                        putExtra("question_index", sessionInfo?.second ?: 0)
+                                        putExtra("question_text", sessionInfo?.third ?: "Please answer this question")
+                                    }
+                                    videoRecordLauncher.launch(intent)
+                                }
+                            ) {
+                                Text("Start Recording Early")
+                            }
+                        } else {
+                            // 等待状态
+                            Text(
+                                text = "Video Mode",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "Waiting for next question...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
