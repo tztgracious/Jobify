@@ -24,6 +24,7 @@
     <color name="warning_amber">#FFC107</color>
     <color name="warning_amber_dark">#FFA000</color>
     <color name="warning_amber_light">#FFECB3</color>
+    <color name="warning_orange">#FF9800</color>
     
     <color name="error_red">#F44336</color>
     <color name="error_red_dark">#D32F2F</color>

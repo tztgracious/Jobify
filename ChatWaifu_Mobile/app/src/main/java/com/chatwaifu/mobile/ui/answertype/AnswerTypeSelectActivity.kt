@@ -58,23 +58,24 @@ class AnswerTypeSelectActivity : AppCompatActivity() {
         binding = ActivityAnswerTypeSelectBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.tvTitle.text = getString(R.string.select_answer_type)
-        binding.btnTextAnswer.text = getString(R.string.text_answer)
-        binding.btnVideoAnswer.text = getString(R.string.video_answer)
+        // 移除无用的按钮赋值
+        // binding.tvTitle.text = getString(R.string.select_answer_type)
+        // binding.btnTextAnswer.text = getString(R.string.text_answer)
+        // binding.btnVideoAnswer.text = getString(R.string.video_answer)
 
         docId = intent.getStringExtra("doc_id")
         keywords = intent.getStringArrayExtra("keywords")
 
-        binding.btnTextAnswer.setOnClickListener {
+        // 选项点击逻辑
+        binding.layoutTextAnswer.setOnClickListener {
             selectedType = "text"
-            binding.btnTextAnswer.isEnabled = false
-            binding.btnVideoAnswer.isEnabled = true
+            binding.ivTextSelected.visibility = android.view.View.VISIBLE
+            binding.ivVideoSelected.visibility = android.view.View.GONE
         }
-        binding.btnVideoAnswer.setOnClickListener {
+        binding.layoutVideoAnswer.setOnClickListener {
             selectedType = "video"
-            binding.btnTextAnswer.isEnabled = true
-            binding.btnVideoAnswer.isEnabled = false
-            // 不再触发权限申请和跳转
+            binding.ivTextSelected.visibility = android.view.View.GONE
+            binding.ivVideoSelected.visibility = android.view.View.VISIBLE
         }
         binding.btnBack.setOnClickListener {
             val intent = Intent(this, com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity::class.java)

@@ -92,7 +92,7 @@
     <string name="chat_status_hint_send_request">send request…</string>
     <string name="chat_status_hint_generate_sound">generating sound…</string>
     <string name="chat_status_hint_translate">translating…</string>
-    <string name="chat_status_hint_interview_mode">interview mode - question %d of %d</string>
+    <string name="chat_status_hint_interview_mode" formatted="false">interview mode - question %d of %d</string>
 
 
     <string name="chat_record_too_short">record audio is too short… try again</string>
@@ -124,7 +124,7 @@
     <string name="keywords_description">We have extracted the following keywords from your resume, which will be used to generate personalized interview questions</string>
     <string name="keywords_count">Extracted %d keywords</string>
     <string name="target_job_title">Set Target Job</string>
-    <string name="job_title_hint">e.g., Software Engineer, Product Manager</string>
+    <string name="job_title_hint">e.g. Software Engineer</string>
     <string name="location_hint">e.g., New York, San Francisco, Remote</string>
     <string name="salary_hint">e.g., 80k-120k</string>
     <string name="skills_title">Related Skills</string>
@@ -150,8 +150,7 @@
     <string name="interview_mode_title">Interview Mode</string>
     <string name="interview_mode_description">You are now in interview mode. Please answer the questions that will be asked.</string>
     <string name="interview_completed">Interview completed!</string>
-    <string name="interview_tips_title">Interview Tips</string>
-    <string name="interview_question_prefix">Question %d of %d</string>
+    <string name="interview_question_prefix" formatted="false">Question %d of %d</string>
     <string name="emulator_tts_disabled">TTS disabled in emulator</string>
     <!-- AnswerTypeSelectActivity 相关 -->
     <string name="select_answer_type">Please select your answer type</string>
@@ -164,4 +163,53 @@
     <string name="video_saved">Video saved!</string>
     <string name="video_error">Video recording error</string>
     <string name="time_up">Time is up!</string>
+    
+    <!-- Resume Issues Activity -->
+    <string name="resume_issues_title">Resume Issues Detection</string>
+    <string name="resume_issues_description">We analyzed your resume and found the following areas for improvement</string>
+    <string name="resume_analysis_results">Analysis Results</string>
+    <string name="analyzing_resume">Analyzing resume...</string>
+    <string name="no_issues_found">No Issues Found</string>
+    <string name="resume_looks_good">Your resume looks great! No obvious issues were found.</string>
+    <string name="improvement_tips">Improvement Tips</string>
+    <string name="improvement_tips_description">Based on industry best practices, we recommend focusing on the issues mentioned above to improve your resume quality.</string>
+    
+    <!-- Keywords Activity -->
+    <string name="extracted_keywords">Extracted Keywords</string>
+    
+    <!-- Solution Activity -->
+    <string name="interview_summary_title">Interview Summary</string>
+    <string name="interview_summary_description">Here is your interview performance summary and feedback</string>
+    <string name="your_score">Your Score</string>
+    <string name="performance_evaluation">Performance Evaluation</string>
+    <string name="improvement_suggestions">Improvement Suggestions</string>
+    <string name="sample_evaluation">Great job! You demonstrated strong communication skills and technical knowledge. Your answers were clear and well-structured.</string>
+    <string name="sample_suggestions">Consider providing more specific examples for your project experience. Practice explaining complex technical concepts in simpler terms.</string>
+    
+    <!-- Answer Type Select Activity -->
+    <string name="select_answer_type_description">Choose your preferred way to answer interview questions</string>
+    <string name="answer_type_options">Answer Type Options</string>
+    <string name="text_answer_description">Answer questions by typing text responses</string>
+    <string name="video_answer_description">Record video responses to interview questions</string>
+
+    <!-- Tips Activity -->
+    <string name="interview_tips_title">Interview Tips</string>
+    <string name="interview_tips_description">Here are some tips to help you perform better in future interviews</string>
+    <string name="tip_prepare">Prepare in Advance</string>
+    <string name="tip_prepare_desc">Review common interview questions and practice your answers. Research the company and the role.</string>
+    <string name="tip_communicate">Communicate Clearly</string>
+    <string name="tip_communicate_desc">Speak clearly and confidently. Structure your answers logically and avoid rambling.</string>
+    <string name="tip_confidence">Show Confidence</string>
+    <string name="tip_confidence_desc">Maintain good eye contact, smile, and show enthusiasm for the position.</string>
+    <string name="interview_solution_title">Interview Solutions</string>
+    <string name="update_database">Update Database</string>
+    <string name="update_database_title">Update Database</string>
+    <string name="update_database_description">Upload your PDF resume to help us improve our database. Your file will be sent to our backend for analysis and enhancement.</string>
+    <string name="select_pdf">Select PDF File</string>
+    <string name="upload_pdf">Upload PDF</string>
+    <string name="upload_success">Upload successful!</string>
+    <string name="upload_failed">Upload failed. Please try again.</string>
+    <string name="choose_file">Choose File</string>
+    <string name="no_file_selected">No file selected</string>
+    <string name="uploading">Uploading...</string>
 </resources>

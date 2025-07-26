@@ -2,12 +2,11 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:flexbox="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/welcome_gradient_background"
-    tools:context=".ui.keywords.KeywordsActivity">
+    tools:context=".ui.resume.ResumeIssuesActivity">
 
     <!-- 主要内容 -->
     <androidx.core.widget.NestedScrollView
@@ -26,7 +25,7 @@
                 android:id="@+id/tvTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/keywords_title"
+                android:text="@string/resume_issues_title"
                 android:textColor="@color/white"
                 android:textSize="28sp"
                 android:textStyle="bold"
@@ -37,13 +36,13 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/keywords_description"
+                android:text="@string/resume_issues_description"
                 android:textColor="@color/white"
                 android:textSize="16sp"
                 android:gravity="center"
                 android:layout_marginBottom="32dp"/>
 
-            <!-- 关键词展示卡片 -->
+            <!-- 问题检测结果卡片 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -77,97 +76,116 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/extracted_keywords"
+                            android:text="@string/resume_analysis_results"
                             android:textColor="@color/primary_blue"
                             android:textSize="18sp"
                             android:textStyle="bold"/>
 
                     </LinearLayout>
 
-                    <!-- 关键词Flow布局 -->
-                    <com.google.android.flexbox.FlexboxLayout
-                        android:id="@+id/flexKeywords"
+                    <!-- 问题列表 -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvIssues"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        flexbox:flexWrap="wrap"
-                        flexbox:justifyContent="flex_start"
-                        flexbox:alignItems="flex_start"/>
+                        android:nestedScrollingEnabled="false"
+                        tools:listitem="@layout/item_resume_issue"/>
+
+                    <!-- 加载状态 -->
+                    <LinearLayout
+                        android:id="@+id/loadingLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:padding="32dp"
+                        android:visibility="gone">
+
+                        <ProgressBar
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_marginBottom="16dp"
+                            android:indeterminateTint="@color/primary_blue"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/analyzing_resume"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="16sp"/>
+
+                    </LinearLayout>
+
+                    <!-- 空状态 -->
+                    <LinearLayout
+                        android:id="@+id/emptyLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:padding="32dp"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:layout_width="64dp"
+                            android:layout_height="64dp"
+                            android:src="@drawable/ic_check"
+                            android:tint="@color/success_green"
+                            android:layout_marginBottom="16dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/no_issues_found"
+                            android:textColor="@color/success_green"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/resume_looks_good"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            android:gravity="center"/>
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 期望职位卡片 -->
+            <!-- 建议卡片 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="32dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/white">
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/primary_blue_light">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="24dp">
+                    android:padding="20dp">
 
-                    <!-- 标题栏 -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="20dp">
+                        android:text="@string/improvement_tips"
+                        android:textColor="@color/primary_blue"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
 
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:src="@drawable/ic_work"
-                            android:tint="@color/primary_blue"
-                            android:layout_marginEnd="16dp"/>
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/target_job_title"
-                            android:textColor="@color/primary_blue"
-                            android:textSize="18sp"
-                            android:textStyle="bold"/>
-
-                    </LinearLayout>
-
-                    <!-- 期望职位输入框 -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/jobInputLayout"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:boxBackgroundMode="outline"
-                        app:boxCornerRadiusTopStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        app:boxBackgroundColor="@color/gray_50"
-                        app:boxStrokeColor="@color/primary_blue"
-                        app:hintTextColor="@color/primary_blue">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/etJobTitle"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:minHeight="56dp"
-                            android:hint="@string/job_title_hint"
-                            android:textColor="@color/text_primary"
-                            android:textColorHint="@color/text_hint"
-                            android:inputType="text"
-                            android:completionThreshold="1"
-                            android:dropDownHeight="300dp"
-                            android:dropDownWidth="match_parent"
-                            android:dropDownVerticalOffset="4dp"/>
-
-                    </com.google.android.material.textfield.TextInputLayout>
+                        android:text="@string/improvement_tips_description"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"/>
 
                 </LinearLayout>
 
@@ -207,4 +225,4 @@
 
     </androidx.core.widget.NestedScrollView>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout> 

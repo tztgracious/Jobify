@@ -86,4 +86,23 @@ class AssistantMessageManager(context: Context) {
         }
         return resultList
     }
+
+    /**
+     * 获取最近count组（AI提问+用户回答）对
+     */
+    fun getRecentQAPairs(characterName: String, count: Int): List<Pair<String, String>> {
+        val chatLogs = dbManager.getChatLogWithLimit(characterName, 2 * count + 2)
+        val qaPairs = mutableListOf<Pair<String, String>>()
+        var lastQuestion: String? = null
+        for (msg in chatLogs.sortedBy { it.timeline }) {
+            if (!msg.sendFromMe) {
+                lastQuestion = msg.chatMessage
+            } else if (lastQuestion != null) {
+                qaPairs.add(Pair(lastQuestion, msg.chatMessage))
+                lastQuestion = null
+            }
+            if (qaPairs.size >= count) break
+        }
+        return qaPairs
+    }
 }

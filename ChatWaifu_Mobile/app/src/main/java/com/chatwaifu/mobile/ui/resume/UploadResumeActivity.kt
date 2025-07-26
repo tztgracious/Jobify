@@ -17,6 +17,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.chatwaifu.mobile.ui.welcome.WelcomeActivity
 import com.chatwaifu.mobile.ChatActivity
 import com.chatwaifu.mobile.ui.keywords.KeywordsActivity
+import com.chatwaifu.mobile.ui.resume.ResumeIssuesActivity
 import com.chatwaifu.mobile.R
 
 class UploadResumeActivity : AppCompatActivity() {
@@ -110,7 +111,7 @@ class UploadResumeActivity : AppCompatActivity() {
                     try {
                 hideLoadingDialog()
                 val keywords = arrayOf("Java", "C++", "Python")
-                startActivity(Intent(this, KeywordsActivity::class.java).apply {
+                startActivity(Intent(this, ResumeIssuesActivity::class.java).apply {
                     putExtra("keywords", keywords)
                     putExtra("doc_id", "mock-doc-id-12345") // 传递模拟的doc_id
                 })

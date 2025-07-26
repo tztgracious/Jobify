@@ -1,52 +1,50 @@
 package com.chatwaifu.mobile.ui.solution
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.appcompat.app.AppCompatActivity
+import com.chatwaifu.mobile.databinding.ActivitySolutionBinding
 
-class SolutionActivity : ComponentActivity() {
+class SolutionActivity : AppCompatActivity() {
+    private lateinit var binding: ActivitySolutionBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = ActivitySolutionBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // 从intent获取传递的数据
         val questions = intent.getStringArrayListExtra("questions") ?: arrayListOf()
         val answers = intent.getStringArrayListExtra("answers") ?: arrayListOf()
         val solutions = intent.getStringArrayListExtra("solutions") ?: arrayListOf()
-        setContent {
-            SolutionScreen(
-                questions = questions,
-                answers = answers,
-                solutions = solutions
-            )
-        }
-    }
-}
 
-@Composable
-fun SolutionScreen(
-    questions: List<String>,
-    answers: List<String>,
-    solutions: List<String>
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(24.dp)
-    ) {
-        Text("Interview Solutions", fontSize = 24.sp, color = Color.Black)
-        Spacer(modifier = Modifier.height(16.dp))
-        for (i in questions.indices) {
-            Text("Q${i+1}: ${questions[i]}", fontSize = 16.sp, color = Color.DarkGray)
-            Text("Your answer: ${answers.getOrNull(i) ?: ""}", fontSize = 14.sp, color = Color.Gray)
-            Text("Solution: ${solutions.getOrNull(i) ?: ""}", fontSize = 14.sp, color = Color(0xFF1976D2))
-            Spacer(modifier = Modifier.height(16.dp))
+        // 填充UI
+        if (questions.size >= 1) {
+            binding.tvQuestion1.text = "Question 1: ${questions.getOrNull(0) ?: ""}"
+            binding.tvYourAnswer1.text = "Your Answer: ${answers.getOrNull(0) ?: ""}"
+            binding.tvStandardAnswer1.text = "Solution: ${solutions.getOrNull(0) ?: ""}"
+        }
+        
+        if (questions.size >= 2) {
+            binding.tvQuestion2.text = "Question 2: ${questions.getOrNull(1) ?: ""}"
+            binding.tvYourAnswer2.text = "Your Answer: ${answers.getOrNull(1) ?: ""}"
+            binding.tvStandardAnswer2.text = "Solution: ${solutions.getOrNull(1) ?: ""}"
+        }
+        
+        if (questions.size >= 3) {
+            binding.tvQuestion3.text = "Question 3: ${questions.getOrNull(2) ?: ""}"
+            binding.tvYourAnswer3.text = "Your Answer: ${answers.getOrNull(2) ?: ""}"
+            binding.tvStandardAnswer3.text = "Solution: ${solutions.getOrNull(2) ?: ""}"
+        }
+
+        binding.btnBack.setOnClickListener { finish() }
+        binding.btnNext.setOnClickListener {
+            val intent = android.content.Intent(this, com.chatwaifu.mobile.ui.tips.TipsActivity::class.java)
+            // 传递数据给TipsActivity
+            intent.putStringArrayListExtra("questions", questions)
+            intent.putStringArrayListExtra("answers", answers)
+            intent.putStringArrayListExtra("solutions", solutions)
+            startActivity(intent)
+            finish()
         }
     }
 } 

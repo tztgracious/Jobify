@@ -77,7 +77,7 @@ class InterviewQuestionsActivity : AppCompatActivity() {
             startAnswerTimer()
         } else {
             // 跳转到TipsActivity并传递答案
-            val intent = Intent(this, TipsActivity::class.java)
+            val intent = Intent(this, com.chatwaifu.mobile.ui.tips.TipsActivity::class.java)
             intent.putStringArrayListExtra("answers", ArrayList(answers))
             startActivity(intent)
             finish()

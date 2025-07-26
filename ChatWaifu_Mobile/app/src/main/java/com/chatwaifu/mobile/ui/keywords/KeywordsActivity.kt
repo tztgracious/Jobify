@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.chatwaifu.mobile.ChatActivity
 import com.chatwaifu.mobile.databinding.ActivityKeywordsBinding
 import com.chatwaifu.mobile.ui.resume.UploadResumeActivity
+import com.chatwaifu.mobile.ui.resume.ResumeIssuesActivity
 import com.google.android.flexbox.FlexboxLayout
 import android.widget.TextView
 import android.view.ViewGroup
@@ -93,9 +94,9 @@ class KeywordsActivity : AppCompatActivity() {
     }
 
     private fun setupButtons() {
-        // 返回按钮直接回到 UploadResumeActivity
+        // 返回按钮回到 ResumeIssuesActivity
         binding.btnBack.setOnClickListener {
-            startActivity(Intent(this, UploadResumeActivity::class.java).apply {
+            startActivity(Intent(this, ResumeIssuesActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP // 清除返回栈
             })
             finish()
@@ -103,11 +104,17 @@ class KeywordsActivity : AppCompatActivity() {
 
         // 下一步按钮
         binding.btnNext.setOnClickListener {
+            val jobTitle = binding.etJobTitle.text.toString()
+            if (!validateInput(jobTitle)) {
+                return@setOnClickListener
+            }
+            
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
             val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
             val intent = Intent(this, com.chatwaifu.mobile.ui.answermode.AnswerModeSelectActivity::class.java).apply {
                 putExtra("doc_id", docId)
                 putExtra("keywords", keywords)
+                putExtra("job_title", jobTitle)
             }
             startActivity(intent)
         }
