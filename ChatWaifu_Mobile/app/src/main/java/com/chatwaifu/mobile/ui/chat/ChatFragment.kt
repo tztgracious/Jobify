@@ -115,6 +115,11 @@ class ChatFragment : Fragment() {
                     }
                 }
                 ChatWaifu_MobileTheme {
+                    val questions = listOf(
+                        "Please introduce yourself and tell me about your background.",
+                        "What are your greatest strengths and how would they benefit this role?",
+                        "Describe a challenging project you worked on and how you overcame obstacles."
+                    )
                     ChatContentScaffold(
                         originAndroidView = { live2DView!! },
                         onNavIconPressed = { activityViewModel.openDrawer() },
@@ -149,6 +154,7 @@ class ChatFragment : Fragment() {
                                 }
                             }
                         },
+                        questions = questions
                     )
                 }
             }

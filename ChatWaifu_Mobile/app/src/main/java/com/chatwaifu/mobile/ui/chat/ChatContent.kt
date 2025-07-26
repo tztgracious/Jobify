@@ -101,7 +101,8 @@ fun ChatContentScaffold(
     onResetModel: () -> Unit = {},
     onRecordStart: () -> Unit = {},
     onRecordEnd: () -> Unit = {},
-    chatActivityViewModel: ChatActivityViewModel
+    chatActivityViewModel: ChatActivityViewModel,
+    questions: List<String>
 ) {
     val topBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
@@ -161,7 +162,8 @@ fun ChatContentScaffold(
                 onRecordStart = onRecordStart,
                 onRecordEnd = onRecordEnd,
                 onResetModel = onResetModel,
-                chatActivityViewModel = chatActivityViewModel // 关键参数补全
+                chatActivityViewModel = chatActivityViewModel,
+                questions = questions
             )
         }
     }
@@ -180,7 +182,8 @@ fun ChatContent(
     onResetModel: () -> Unit = {},
     onRecordStart: () -> Unit = {},
     onRecordEnd: () -> Unit = {},
-    chatActivityViewModel: ChatActivityViewModel
+    chatActivityViewModel: ChatActivityViewModel,
+    questions: List<String>
 ) {
     var touchModeEnable by rememberSaveable { mutableStateOf(false) }
     var currentInputSelector by rememberSaveable { mutableStateOf(InputSelector.NONE) }
@@ -244,7 +247,7 @@ fun ChatContent(
                                 .verticalScroll(rememberScrollState())
                         ) {
                             Text(
-                                text = chatContent,
+                                text = if (!isReady) "" else if (currentQuestionIndex < questions.size) questions.getOrNull(currentQuestionIndex) ?: "" else "Thank you for your answer. The interview is over.",
                                 fontSize = 14.sp,
                                 color = Color.White,
                             )
@@ -422,13 +425,19 @@ fun TouchIndicator(
 fun ChatContentPreview() {
     ChatWaifu_MobileTheme {
         val context = LocalContext.current
+        val questions = listOf(
+            "Please introduce yourself and tell me about your background.",
+            "What are your greatest strengths and how would they benefit this role?",
+            "Describe a challenging project you worked on and how you overcame obstacles."
+        )
         ChatContent(
             originAndroidView = {
             View(context).apply {
                 setBackgroundColor(resources.getColor(androidx.appcompat.R.color.material_blue_grey_800))
             }
             },
-            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+            questions = questions
         )
     }
 }
@@ -439,6 +448,11 @@ fun ChatContentPreview() {
 fun ChatContentScaffoldPreview() {
     ChatWaifu_MobileTheme {
         val context = LocalContext.current
+        val questions = listOf(
+            "Please introduce yourself and tell me about your background.",
+            "What are your greatest strengths and how would they benefit this role?",
+            "Describe a challenging project you worked on and how you overcame obstacles."
+        )
         ChatContentScaffold(
             originAndroidView = {
                 View(context).apply {
@@ -456,7 +470,8 @@ fun ChatContentScaffoldPreview() {
             onResetModel = {},
             onRecordStart = {},
             onRecordEnd = {},
-            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+            questions = questions
         )
     }
 }
@@ -466,6 +481,11 @@ fun ChatContentScaffoldPreview() {
 fun ChatContentScaffoldPreviewDark() {
     ChatWaifu_MobileTheme(darkTheme = true) {
         val context = LocalContext.current
+        val questions = listOf(
+            "Please introduce yourself and tell me about your background.",
+            "What are your greatest strengths and how would they benefit this role?",
+            "Describe a challenging project you worked on and how you overcame obstacles."
+        )
         ChatContentScaffold(
             originAndroidView = {
                 View(context).apply {
@@ -483,7 +503,8 @@ fun ChatContentScaffoldPreviewDark() {
             onResetModel = {},
             onRecordStart = {},
             onRecordEnd = {},
-            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+            chatActivityViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+            questions = questions
         )
     }
 }

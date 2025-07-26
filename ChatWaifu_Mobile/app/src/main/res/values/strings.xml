@@ -152,17 +152,6 @@
     <string name="interview_completed">Interview completed!</string>
     <string name="interview_question_prefix" formatted="false">Question %d of %d</string>
     <string name="emulator_tts_disabled">TTS disabled in emulator</string>
-    <!-- AnswerTypeSelectActivity 相关 -->
-    <string name="select_answer_type">Please select your answer type</string>
-    <string name="text_answer">Text Answer</string>
-    <string name="video_answer">Video Answer</string>
-    <string name="permission_denied">Camera and microphone permissions are required for video answer.</string>
-    <string name="start_recording">Start Recording</string>
-    <string name="stop_recording">Stop</string>
-    <string name="finish">Finish</string>
-    <string name="video_saved">Video saved!</string>
-    <string name="video_error">Video recording error</string>
-    <string name="time_up">Time is up!</string>
     
     <!-- Resume Issues Activity -->
     <string name="resume_issues_title">Resume Issues Detection</string>
@@ -187,10 +176,13 @@
     <string name="sample_suggestions">Consider providing more specific examples for your project experience. Practice explaining complex technical concepts in simpler terms.</string>
     
     <!-- Answer Type Select Activity -->
+    <!-- 删除以下字符串 -->
+    <!--
     <string name="select_answer_type_description">Choose your preferred way to answer interview questions</string>
     <string name="answer_type_options">Answer Type Options</string>
     <string name="text_answer_description">Answer questions by typing text responses</string>
     <string name="video_answer_description">Record video responses to interview questions</string>
+    -->
 
     <!-- Tips Activity -->
     <string name="interview_tips_title">Interview Tips</string>
@@ -212,4 +204,20 @@
     <string name="choose_file">Choose File</string>
     <string name="no_file_selected">No file selected</string>
     <string name="uploading">Uploading...</string>
+    
+    <!-- Tech Interview Activity -->
+    <string name="tech_interview_title">Technical interview</string>
+    <string name="sample_tech_question">Please briefly explain how Retrofit works.</string>
+    <string name="answer_hint">Please enter your answer</string>
+    <string name="validation_answer_required">Please enter your answer</string>
+    
+    <!-- Tech Solution Activity -->
+    <string name="tech_solution_title">Tech Interview Solution</string>
+    <string name="question_label">Question</string>
+    <string name="your_answer_label">Your Answer</string>
+    <string name="standard_answer_label">Standard Answer</string>
+    <string name="sample_user_answer">Retrofit is a type-safe HTTP client for Android and Java. It allows you to define your API interface as a Java interface and automatically generates the implementation for you.</string>
+    <string name="sample_standard_answer">Retrofit is a type-safe HTTP client for Android and Java developed by Square. It allows you to define your API interface as a Java interface and automatically generates the implementation for you. Key features include: 1) Type-safe API calls, 2) Automatic JSON parsing, 3) Support for various HTTP methods, 4) Request/response interceptors, 5) Easy integration with RxJava and other reactive libraries.</string>
+    <string name="finish">Finish</string>
+    <string name="time_up">Time is up!</string>
 </resources>

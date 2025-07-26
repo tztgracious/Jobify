@@ -56,12 +56,13 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.answertype.AnswerTypeSelectActivity" />
-        <activity
             android:name=".ui.solution.SolutionActivity"
             android:exported="false" />
         <activity
             android:name=".ui.techinterview.TechInterviewActivity" />
+        <activity
+            android:name=".ui.techinterview.TechSolutionActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.tips.TipsActivity"
             android:exported="false" />

@@ -19,7 +19,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
 import com.google.android.material.snackbar.Snackbar
-import com.chatwaifu.mobile.ui.answertype.AnswerTypeSelectActivity
+import com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity
 
 class KeywordsActivity : AppCompatActivity() {
 
@@ -111,7 +111,7 @@ class KeywordsActivity : AppCompatActivity() {
             
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
             val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
-            val intent = Intent(this, com.chatwaifu.mobile.ui.answermode.AnswerModeSelectActivity::class.java).apply {
+            val intent = Intent(this, com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity::class.java).apply {
                 putExtra("doc_id", docId)
                 putExtra("keywords", keywords)
                 putExtra("job_title", jobTitle)
