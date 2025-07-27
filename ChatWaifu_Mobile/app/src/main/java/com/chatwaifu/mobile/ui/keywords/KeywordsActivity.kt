@@ -54,14 +54,8 @@ class KeywordsActivity : AppCompatActivity() {
         val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
         Log.d(TAG, "Loading keywords for doc_id: $docId")
         
-        // TODO: 使用真正的API调用
-        /*
+        // 使用真正的API调用
         viewModel.loadKeywords(docId)
-        */
-        
-        // 暂时使用模拟数据
-        val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
-        displayKeywords(keywords.toList())
     }
 
     private fun setupJobDropdown() {
@@ -110,10 +104,11 @@ class KeywordsActivity : AppCompatActivity() {
             }
             
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
-            val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
+            // 使用从ViewModel获取的关键词，而不是intent中的模拟数据
+            val currentKeywords = viewModel.keywords.value ?: listOf("Java", "Kotlin", "Android", "REST API")
             val intent = Intent(this, com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity::class.java).apply {
                 putExtra("doc_id", docId)
-                putExtra("keywords", keywords)
+                putExtra("keywords", currentKeywords.toTypedArray())
                 putExtra("job_title", jobTitle)
             }
             startActivity(intent)
@@ -121,22 +116,43 @@ class KeywordsActivity : AppCompatActivity() {
     }
     
     private fun setupObservers() {
-        // TODO: 观察ViewModel的结果
-        /*
+        // 观察ViewModel的结果
         viewModel.keywords.observe(this) { keywords ->
+            Log.d(TAG, "Received keywords: ${keywords.size} items")
             displayKeywords(keywords)
         }
         
         viewModel.isLoading.observe(this) { isLoading ->
-            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            Log.d(TAG, "Loading state changed: $isLoading")
+            if (isLoading) {
+                showLoadingState()
+            } else {
+                hideLoadingState()
+            }
         }
         
         viewModel.error.observe(this) { error ->
             if (error.isNotEmpty()) {
+                Log.d(TAG, "Showing error: $error")
                 showSnackbar(error)
             }
         }
-        */
+    }
+    
+    private fun showLoadingState() {
+        // 显示加载状态，可以在关键词区域显示进度条
+        binding.flexKeywords.removeAllViews()
+        val loadingText = TextView(this)
+        loadingText.text = "Extracting keywords from your resume..."
+        loadingText.setTextColor(resources.getColor(android.R.color.darker_gray, null))
+        loadingText.textSize = 16f
+        loadingText.gravity = android.view.Gravity.CENTER
+        loadingText.setPadding(32, 32, 32, 32)
+        binding.flexKeywords.addView(loadingText)
+    }
+    
+    private fun hideLoadingState() {
+        // 加载完成，关键词会通过displayKeywords方法显示
     }
     
     private fun displayKeywords(keywords: List<String>) {

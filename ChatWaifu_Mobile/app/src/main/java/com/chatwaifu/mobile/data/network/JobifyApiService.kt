@@ -20,7 +20,7 @@ interface JobifyApiService {
     @Multipart
     @POST("api/v1/get-keywords/")
     suspend fun getKeywords(
-        @Part("doc_id") docId: RequestBody
+        @Part("id") docId: RequestBody
     ): Response<KeywordsResponse>
     
     @POST("api/v1/get-grammar-results/")
