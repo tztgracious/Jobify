@@ -32,19 +32,25 @@ class ResumeViewModel : ViewModel() {
         
         viewModelScope.launch {
             try {
-                // TODO: 实现真正的API调用
-                /*
+                Log.d(TAG, "Starting real API call for resume upload")
+                Log.d(TAG, "File URI: $uri")
+                
                 val file = createMultipartBody(context, uri)
+                Log.d(TAG, "MultipartBody created successfully")
+                
                 val response = apiService.uploadResume(file)
+                Log.d(TAG, "API call completed, status code: ${response.code()}")
                 
                 if (response.isSuccessful) {
                     val uploadResponse = response.body()
+                    Log.d(TAG, "Upload response: $uploadResponse")
+                    
                     if (uploadResponse?.valid_file == true) {
-                        uploadResponse.doc_id?.let { docId ->
+                        uploadResponse.id?.let { docId ->
                             Log.d(TAG, "Resume uploaded successfully, doc_id: $docId")
                             uploadResult.postValue(UploadResult.Success(docId))
                         } ?: run {
-                            Log.e(TAG, "Upload successful but doc_id is null")
+                            Log.e(TAG, "Upload successful but id is null")
                             uploadResult.postValue(UploadResult.Error("Upload failed: no document ID"))
                         }
                     } else {
@@ -53,15 +59,10 @@ class ResumeViewModel : ViewModel() {
                         uploadResult.postValue(UploadResult.Error(errorMsg))
                     }
                 } else {
-                    Log.e(TAG, "Upload failed with status: ${response.code()}")
-                    uploadResult.postValue(UploadResult.Error("Upload failed: ${response.code()}"))
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Upload failed with status: ${response.code()}, error: $errorBody")
+                    uploadResult.postValue(UploadResult.Error("Upload failed: ${response.code()} - $errorBody"))
                 }
-                */
-                
-                // 模拟API调用 - 暂时使用模拟数据
-                Log.d(TAG, "Using mock data for resume upload")
-                kotlinx.coroutines.delay(2000) // 模拟网络延迟
-                uploadResult.postValue(UploadResult.Success("mock-doc-id-12345"))
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error uploading resume", e)
@@ -72,14 +73,14 @@ class ResumeViewModel : ViewModel() {
         }
     }
     
-    // TODO: 实现创建MultipartBody的辅助方法
-    /*
     private fun createMultipartBody(context: Context, uri: Uri): MultipartBody.Part {
         val inputStream = context.contentResolver.openInputStream(uri)
         val fileBytes = inputStream?.readBytes() ?: ByteArray(0)
         inputStream?.close()
         
         val fileName = getFileName(context, uri) ?: "resume.pdf"
+        Log.d(TAG, "File name: $fileName, File size: ${fileBytes.size} bytes")
+        
         val requestBody = RequestBody.create("application/pdf".toMediaTypeOrNull(), fileBytes)
         
         return MultipartBody.Part.createFormData("file", fileName, requestBody)
@@ -103,5 +104,4 @@ class ResumeViewModel : ViewModel() {
             else -> null
         }
     }
-    */
 } 

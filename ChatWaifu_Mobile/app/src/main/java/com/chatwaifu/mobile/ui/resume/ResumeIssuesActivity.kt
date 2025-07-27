@@ -54,8 +54,13 @@ class ResumeIssuesActivity : AppCompatActivity() {
 
         binding.btnNext.setOnClickListener {
             Log.d(TAG, "Next button clicked.")
-            // 跳转到KeywordsActivity
+            
+            // 调试：先测试API连接
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
+            Log.d(TAG, "Testing API connection before proceeding...")
+            viewModel.testApiConnection(docId)
+            
+            // 跳转到KeywordsActivity
             val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
             startActivity(Intent(this, KeywordsActivity::class.java).apply {
                 putExtra("doc_id", docId)
@@ -66,14 +71,20 @@ class ResumeIssuesActivity : AppCompatActivity() {
 
     private fun setupObservers() {
         viewModel.issues.observe(this) { issues ->
-            if (issues.isEmpty()) {
-                showEmptyState()
-            } else {
+            Log.d(TAG, "Received issues: ${issues.size} items")
+            if (issues.isNotEmpty()) {
                 showIssuesList(issues)
+            } else {
+                // 只有在没有收到任何issues时才显示空状态
+                // 如果issues列表为空但ViewModel还在加载，则不显示空状态
+                if (!viewModel.isLoading.value!!) {
+                    showEmptyState()
+                }
             }
         }
 
         viewModel.isLoading.observe(this) { isLoading ->
+            Log.d(TAG, "Loading state changed: $isLoading")
             if (isLoading) {
                 showLoadingState()
             } else {
@@ -83,6 +94,7 @@ class ResumeIssuesActivity : AppCompatActivity() {
 
         viewModel.error.observe(this) { error ->
             if (error.isNotEmpty()) {
+                Log.d(TAG, "Showing error: $error")
                 showSnackbar(error)
                 viewModel.clearError()
             }

@@ -6,6 +6,8 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
+import java.security.cert.X509Certificate
+import javax.net.ssl.*
 
 interface JobifyApiService {
     
@@ -20,6 +22,11 @@ interface JobifyApiService {
     suspend fun getKeywords(
         @Part("doc_id") docId: RequestBody
     ): Response<KeywordsResponse>
+    
+    @POST("api/v1/get-grammar-results/")
+    suspend fun getGrammarResults(
+        @Body request: GrammarRequest
+    ): Response<GrammarResponse>
     
     @POST("api/v1/target-job/")
     suspend fun saveTargetJob(
@@ -44,11 +51,35 @@ interface JobifyApiService {
     ): Response<SubmitAnswerResponse>
     
     companion object {
-        private const val BASE_URL = "http://10.0.2.2:8000/"  // 使用Android模拟器的localhost映射
+        private const val BASE_URL = "https://115.29.170.231/"  // 使用HTTPS协议
         
         fun create(): JobifyApiService {
+            val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
+                level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+            }
+            
+            // 创建信任所有证书的SSL上下文（仅用于开发环境）
+            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+            })
+            
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+            
+            val client = okhttp3.OkHttpClient.Builder()
+                .addInterceptor(loggingInterceptor)
+                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+                .hostnameVerifier { _, _ -> true }  // 信任所有主机名
+                .build()
+            
             return Retrofit.Builder()
                 .baseUrl(BASE_URL)
+                .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(JobifyApiService::class.java)
@@ -58,7 +89,7 @@ interface JobifyApiService {
 
 // 数据模型
 data class UploadResumeResponse(
-    val doc_id: String?,
+    val id: String?,
     val valid_file: Boolean,
     val error_msg: String?
 )
@@ -67,6 +98,65 @@ data class KeywordsResponse(
     val finished: Boolean,
     val keywords: List<String>,
     val error: String
+)
+
+data class GrammarRequest(
+    val id: String
+)
+
+data class GrammarResponse(
+    val finished: Boolean,
+    val grammar_check: GrammarCheck?,
+    val error: String
+)
+
+data class GrammarCheck(
+    val language: GrammarLanguage,
+    val matches: List<GrammarMatch>
+)
+
+data class GrammarLanguage(
+    val code: String,
+    val name: String,
+    val detectedLanguage: GrammarDetectedLanguage
+)
+
+data class GrammarDetectedLanguage(
+    val code: String,
+    val name: String,
+    val source: String,
+    val confidence: Double
+)
+
+data class GrammarMatch(
+    val message: String,
+    val shortMessage: String?,
+    val offset: Int,
+    val length: Int,
+    val replacements: List<GrammarReplacement>,
+    val context: GrammarContext,
+    val sentence: String,
+    val rule: GrammarRule
+)
+
+data class GrammarReplacement(
+    val value: String
+)
+
+data class GrammarContext(
+    val text: String,
+    val offset: Int,
+    val length: Int
+)
+
+data class GrammarRule(
+    val id: String,
+    val category: GrammarCategory
+)
+
+data class GrammarCategory(
+    val id: String,
+    val name: String
 )
 
 data class TargetJobRequest(

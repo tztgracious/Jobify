@@ -100,26 +100,8 @@ class UploadResumeActivity : AppCompatActivity() {
                 showSnackbar("Please upload your resume first!")
                 return@setOnClickListener
             }
-            // TODO: 使用真正的API调用
-            /*
             showLoadingDialog()
             viewModel.uploadResume(this, selectedFileUri!!)
-            */
-            // 暂时使用模拟数据
-            showLoadingDialog()
-            Handler(Looper.getMainLooper()).postDelayed({
-                    try {
-                hideLoadingDialog()
-                val keywords = arrayOf("Java", "C++", "Python")
-                startActivity(Intent(this, ResumeIssuesActivity::class.java).apply {
-                    putExtra("keywords", keywords)
-                    putExtra("doc_id", "mock-doc-id-12345") // 传递模拟的doc_id
-                })
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        showSnackbar("跳转失败: ${e.message}")
-                    }
-            }, 2000)
             } catch (e: Exception) {
                 e.printStackTrace()
                 showSnackbar("Error: ${e.message}")
@@ -170,14 +152,12 @@ class UploadResumeActivity : AppCompatActivity() {
     }
     
     private fun setupObservers() {
-        // TODO: 观察ViewModel的结果
-        /*
         viewModel.uploadResult.observe(this) { result ->
             hideLoadingDialog()
             when (result) {
                 is ResumeViewModel.UploadResult.Success -> {
                     Log.d(TAG, "Upload successful, doc_id: ${result.docId}")
-                    startActivity(Intent(this, KeywordsActivity::class.java).apply {
+                    startActivity(Intent(this, ResumeIssuesActivity::class.java).apply {
                         putExtra("doc_id", result.docId)
                     })
                 }
@@ -195,7 +175,6 @@ class UploadResumeActivity : AppCompatActivity() {
                 hideLoadingDialog()
             }
         }
-        */
     }
 
     companion object {
