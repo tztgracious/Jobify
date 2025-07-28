@@ -66,12 +66,19 @@ class TechSolutionActivity : AppCompatActivity() {
         }
         
         viewModel.isLoading.observe(this) { isLoading ->
-            // TODO: 显示加载状态
+            if (isLoading) {
+                binding.tvStandardAnswer.text = "Loading standard answer..."
+                binding.btnNext.isEnabled = false
+            } else {
+                binding.btnNext.isEnabled = true
+            }
         }
         
         viewModel.error.observe(this) { error ->
             if (error.isNotEmpty()) {
                 showSnackbar(error)
+                // 如果API调用失败，显示默认答案
+                binding.tvStandardAnswer.text = "This is a comprehensive answer that covers all the key points. Consider providing specific examples and real-world applications to strengthen your response."
             }
         }
     }

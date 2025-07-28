@@ -44,6 +44,27 @@ interface JobifyApiService {
         @Body request: TechAnswerRequest
     ): Response<TechAnswerResponse>
 
+    // GraphRAG API endpoints
+    @GET("search/global")
+    suspend fun searchGlobal(
+        @Query("query") query: String
+    ): Response<GraphRAGResponse>
+
+    @GET("search/local")
+    suspend fun searchLocal(
+        @Query("query") query: String
+    ): Response<GraphRAGResponse>
+
+    @GET("search/basic")
+    suspend fun searchBasic(
+        @Query("query") query: String
+    ): Response<GraphRAGResponse>
+
+    @GET("search/drift")
+    suspend fun searchDrift(
+        @Query("query") query: String
+    ): Response<GraphRAGResponse>
+
     // 提交面试答案 - 支持文本和视频（严格按照API文档格式）
     @Multipart
     @POST("api/v1/submit-interview-answer/")
@@ -57,7 +78,8 @@ interface JobifyApiService {
     ): Response<SubmitAnswerResponse>
     
     companion object {
-        private const val BASE_URL = "https://115.29.170.231/"  // 使用HTTPS协议
+        private const val BASE_URL = "https://115.29.170.231/"
+        private const val GRAPHRAG_BASE_URL = "https://115.29.170.231/ai/"  // 使用正确的HTTPS路径
         
         fun create(): JobifyApiService {
             val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
@@ -85,6 +107,39 @@ interface JobifyApiService {
             
             return Retrofit.Builder()
                 .baseUrl(BASE_URL)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(JobifyApiService::class.java)
+        }
+        
+        fun createGraphRAG(): JobifyApiService {
+            val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
+                level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+            }
+            
+            // 创建信任所有证书的SSL上下文（仅用于开发环境）
+            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+            })
+            
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+            
+            val client = okhttp3.OkHttpClient.Builder()
+                .addInterceptor(loggingInterceptor)
+                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+                .hostnameVerifier { _, _ -> true }  // 信任所有主机名
+                .retryOnConnectionFailure(true)
+                .build()
+            
+            return Retrofit.Builder()
+                .baseUrl(GRAPHRAG_BASE_URL)
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
@@ -206,6 +261,12 @@ data class TechAnswerResponse(
     val index: Int,
     val question: String,
     val answer: String
+)
+
+// GraphRAG API响应数据模型
+data class GraphRAGResponse(
+    val response: String,
+    val context_data: Any? = null
 )
 
 // 提交答案响应数据（按照API文档格式）
