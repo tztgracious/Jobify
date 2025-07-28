@@ -1,5 +1,6 @@
 package com.chatwaifu.mobile.data.network
 
+import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -33,10 +34,15 @@ interface JobifyApiService {
         @Body request: TargetJobRequest
     ): Response<TargetJobResponse>
     
-    @POST("api/v1/get-questions/")
-    suspend fun getInterviewQuestions(
+    @POST("api/v1/get-all-questions/")
+    suspend fun getAllQuestions(
         @Body request: QuestionsRequest
-    ): Response<QuestionsResponse>
+    ): Response<AllQuestionsResponse>
+    
+    @POST("api/v1/submit-tech-answer/")
+    suspend fun submitTechAnswer(
+        @Body request: TechAnswerRequest
+    ): Response<TechAnswerResponse>
 
     // 提交面试答案 - 支持文本和视频（严格按照API文档格式）
     @Multipart
@@ -160,25 +166,46 @@ data class GrammarCategory(
 )
 
 data class TargetJobRequest(
-    val doc_id: String,  // 添加doc_id字段以符合API文档
+    val id: String,  // 根据API文档，应该是id而不是doc_id
     val title: String,
-    val location: String,
-    val salary_range: String,
-    val tags: List<String>
+    val answer_type: String = "text"  // 默认文本模式
 )
 
 data class TargetJobResponse(
-    val message: String
+    val id: String,
+    val message: String,
+    val answer_type: String
 )
 
 data class QuestionsRequest(
-    val doc_id: String
+    val id: String
 )
 
-data class QuestionsResponse(
+data class AllQuestionsResponse(
+    val id: String,
     val finished: Boolean,
-    val questions: List<String>,
-    val error: String
+    val tech_questions: List<String>,
+    val interview_questions: List<String>,
+    val message: String
+)
+
+data class TechAnswerRequest(
+    @SerializedName("id")
+    val id: String,
+    @SerializedName("index")
+    val index: Int,
+    @SerializedName("question")
+    val question: String,
+    @SerializedName("answer")
+    val answer: String
+)
+
+data class TechAnswerResponse(
+    val id: String,
+    val message: String,
+    val index: Int,
+    val question: String,
+    val answer: String
 )
 
 // 提交答案响应数据（按照API文档格式）

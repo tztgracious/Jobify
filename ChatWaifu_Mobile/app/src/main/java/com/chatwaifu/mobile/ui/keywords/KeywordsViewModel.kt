@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chatwaifu.mobile.data.network.JobifyApiService
+import com.chatwaifu.mobile.data.network.TargetJobRequest
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
@@ -16,6 +17,7 @@ class KeywordsViewModel : ViewModel() {
     val keywords = MutableLiveData<List<String>>()
     val isLoading = MutableLiveData<Boolean>()
     val error = MutableLiveData<String>()
+    val targetJobSaved = MutableLiveData<Boolean>()
     
     private val apiService = JobifyApiService.create()
     
@@ -68,6 +70,46 @@ class KeywordsViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error extracting keywords", e)
                 error.postValue("Network error: ${e.message}")
+            } finally {
+                isLoading.postValue(false)
+            }
+        }
+    }
+    
+    fun saveTargetJob(docId: String, jobTitle: String, answerType: String = "text", onComplete: (Boolean) -> Unit) {
+        isLoading.value = true
+        error.value = ""
+        
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Saving target job: $jobTitle for doc_id: $docId")
+                
+                val request = TargetJobRequest(
+                    id = docId,
+                    title = jobTitle,
+                    answer_type = answerType
+                )
+                
+                val response = apiService.saveTargetJob(request)
+                
+                if (response.isSuccessful) {
+                    val targetJobResponse = response.body()
+                    Log.d(TAG, "Target job saved successfully: $targetJobResponse")
+                    targetJobSaved.postValue(true)
+                    onComplete(true)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Target job save failed with status: ${response.code()}, error: $errorBody")
+                    error.postValue("Failed to save target job: ${response.code()} - $errorBody")
+                    targetJobSaved.postValue(false)
+                    onComplete(false)
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving target job", e)
+                error.postValue("Network error: ${e.message}")
+                targetJobSaved.postValue(false)
+                onComplete(false)
             } finally {
                 isLoading.postValue(false)
             }

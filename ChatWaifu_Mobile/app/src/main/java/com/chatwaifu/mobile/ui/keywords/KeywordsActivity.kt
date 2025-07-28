@@ -20,6 +20,7 @@ import android.view.View
 import android.widget.ArrayAdapter
 import com.google.android.material.snackbar.Snackbar
 import com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity
+import com.chatwaifu.mobile.R
 
 class KeywordsActivity : AppCompatActivity() {
 
@@ -104,14 +105,31 @@ class KeywordsActivity : AppCompatActivity() {
             }
             
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
-            // 使用从ViewModel获取的关键词，而不是intent中的模拟数据
-            val currentKeywords = viewModel.keywords.value ?: listOf("Java", "Kotlin", "Android", "REST API")
-            val intent = Intent(this, com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity::class.java).apply {
-                putExtra("doc_id", docId)
-                putExtra("keywords", currentKeywords.toTypedArray())
-                putExtra("job_title", jobTitle)
+            
+            // 显示保存中的状态
+            binding.btnNext.isEnabled = false
+            binding.btnNext.text = "Saving..."
+            
+            // 调用API保存目标职位
+            viewModel.saveTargetJob(docId, jobTitle) { success ->
+                runOnUiThread {
+                    if (success) {
+                        // 保存成功，跳转到下一个界面
+                        val currentKeywords = viewModel.keywords.value ?: listOf("Java", "Kotlin", "Android", "REST API")
+                        val intent = Intent(this, com.chatwaifu.mobile.ui.techinterview.TechInterviewActivity::class.java).apply {
+                            putExtra("doc_id", docId)
+                            putExtra("keywords", currentKeywords.toTypedArray())
+                            putExtra("job_title", jobTitle)
+                        }
+                        startActivity(intent)
+                    } else {
+                        // 保存失败，恢复按钮状态
+                        binding.btnNext.isEnabled = true
+                        binding.btnNext.text = getString(R.string.next)
+                        showSnackbar("Failed to save target job. Please try again.")
+                    }
+                }
             }
-            startActivity(intent)
         }
     }
     
@@ -135,6 +153,13 @@ class KeywordsActivity : AppCompatActivity() {
             if (error.isNotEmpty()) {
                 Log.d(TAG, "Showing error: $error")
                 showSnackbar(error)
+            }
+        }
+        
+        viewModel.targetJobSaved.observe(this) { saved ->
+            if (saved) {
+                Log.d(TAG, "Target job saved successfully")
+                // 可以在这里添加成功提示
             }
         }
     }
@@ -178,5 +203,24 @@ class KeywordsActivity : AppCompatActivity() {
     
     private fun showSnackbar(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+    
+    // 测试方法：验证API连接
+    private fun testApiConnection() {
+        val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
+        Log.d(TAG, "Testing API connection for doc_id: $docId")
+        
+        // 测试保存目标职位
+        viewModel.saveTargetJob(docId, "Software Engineer") { success ->
+            runOnUiThread {
+                if (success) {
+                    Log.d(TAG, "✅ API connection test successful")
+                    showSnackbar("API connection test successful!")
+                } else {
+                    Log.e(TAG, "❌ API connection test failed")
+                    showSnackbar("API connection test failed!")
+                }
+            }
+        }
     }
 }

@@ -24,9 +24,11 @@ class TechInterviewActivity : AppCompatActivity() {
         binding = ActivityTechInterviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        Log.d(TAG, "TechInterviewActivity onCreate started")
         setupButtons()
         setupObservers()
         loadQuestion()
+        Log.d(TAG, "TechInterviewActivity onCreate completed")
     }
 
     private fun setupButtons() {
@@ -57,17 +59,33 @@ class TechInterviewActivity : AppCompatActivity() {
             val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
             val keywords = intent.getStringArrayExtra("keywords") ?: arrayOf("Java", "Kotlin", "Android", "REST API")
             val jobTitle = intent.getStringExtra("job_title") ?: "Software Engineer"
-            val question = binding.tvQuestion.text.toString()
+            val question = viewModel.originalQuestion.value ?: binding.tvQuestion.text.toString()
             
-            // 跳转到 TechSolutionActivity
-            val intent = Intent(this, TechSolutionActivity::class.java).apply {
-                putExtra("doc_id", docId)
-                putExtra("keywords", keywords)
-                putExtra("job_title", jobTitle)
-                putExtra("tech_question", question)
-                putExtra("tech_answer", answer)
+            // 显示提交中的状态
+            binding.btnNext.isEnabled = false
+            binding.btnNext.text = "Submitting..."
+            
+            // 调用API提交技术答案
+            viewModel.submitAnswer(docId, question, answer) { success ->
+                runOnUiThread {
+                    if (success) {
+                        // 提交成功，跳转到标准答案界面
+                        val intent = Intent(this, TechSolutionActivity::class.java).apply {
+                            putExtra("doc_id", docId)
+                            putExtra("keywords", keywords)
+                            putExtra("job_title", jobTitle)
+                            putExtra("tech_question", question)
+                            putExtra("tech_answer", answer)
+                        }
+                        startActivity(intent)
+                    } else {
+                        // 提交失败，恢复按钮状态
+                        binding.btnNext.isEnabled = true
+                        binding.btnNext.text = getString(R.string.next)
+                        showSnackbar("Failed to submit answer. Please try again.")
+                    }
+                }
             }
-            startActivity(intent)
         }
     }
 
@@ -82,12 +100,23 @@ class TechInterviewActivity : AppCompatActivity() {
     }
 
     private fun setupObservers() {
+        Log.d(TAG, "Setting up observers")
         viewModel.question.observe(this) { question ->
+            Log.d(TAG, "Question observer triggered with: '$question'")
+            Log.d(TAG, "Current tvQuestion text before update: '${binding.tvQuestion.text}'")
             binding.tvQuestion.text = question
+            Log.d(TAG, "Current tvQuestion text after update: '${binding.tvQuestion.text}'")
         }
         
         viewModel.isLoading.observe(this) { isLoading ->
-            // TODO: 显示加载状态
+            if (isLoading) {
+                binding.btnNext.isEnabled = false
+                binding.btnNext.text = "Loading..."
+                // 可以添加进度条或其他加载指示器
+            } else {
+                binding.btnNext.isEnabled = true
+                binding.btnNext.text = getString(R.string.next)
+            }
         }
         
         viewModel.error.observe(this) { error ->
@@ -95,23 +124,36 @@ class TechInterviewActivity : AppCompatActivity() {
                 showSnackbar(error)
             }
         }
+        
+        viewModel.answerSubmitted.observe(this) { submitted ->
+            if (submitted) {
+                Log.d(TAG, "Answer submitted successfully")
+                // 可以在这里添加成功提示
+            }
+        }
     }
     
     private fun loadQuestion() {
-        // 从Intent获取问题，如果没有则从ViewModel加载
-        val question = intent.getStringExtra("tech_question")
-        if (question != null) {
-            binding.tvQuestion.text = question
-        } else {
-            val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
-            val jobTitle = intent.getStringExtra("job_title") ?: "Software Engineer"
-            viewModel.loadTechQuestion(docId, jobTitle)
-        }
+        // 总是从API加载问题，因为问题是从后端动态生成的
+        val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
+        val jobTitle = intent.getStringExtra("job_title") ?: "Software Engineer"
         
-        Log.d(TAG, "Loading question for job title: ${intent.getStringExtra("job_title")}")
+        Log.d(TAG, "loadQuestion called with docId: $docId, jobTitle: $jobTitle")
+        Log.d(TAG, "Current tvQuestion text: '${binding.tvQuestion.text}'")
+        viewModel.loadTechQuestion(docId, jobTitle)
+        Log.d(TAG, "loadTechQuestion called")
     }
     
     private fun showSnackbar(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+    
+    // 测试方法：验证API连接
+    private fun testApiConnection() {
+        val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
+        val jobTitle = intent.getStringExtra("job_title") ?: "Software Engineer"
+        Log.d(TAG, "Testing API connection for doc_id: $docId, job_title: $jobTitle")
+        
+        viewModel.loadTechQuestion(docId, jobTitle)
     }
 } 
