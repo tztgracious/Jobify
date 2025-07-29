@@ -66,16 +66,39 @@ interface JobifyApiService {
     ): Response<GraphRAGResponse>
 
     // 提交面试答案 - 支持文本和视频（严格按照API文档格式）
+    @POST("api/v1/submit-interview-answer/")
+    suspend fun submitInterviewAnswerText(
+        @Body request: SubmitInterviewAnswerRequest
+    ): Response<SubmitAnswerResponse>
+    
     @Multipart
     @POST("api/v1/submit-interview-answer/")
-    suspend fun submitInterviewAnswer(
+    suspend fun submitInterviewAnswerVideo(
         @Part("id") id: RequestBody,
         @Part("index") index: RequestBody,
         @Part("answer_type") answerType: RequestBody,
         @Part("question") question: RequestBody,
-        @Part video: MultipartBody.Part? = null,
-        @Part("answer") textAnswer: RequestBody? = null
+        @Part video: MultipartBody.Part
     ): Response<SubmitAnswerResponse>
+    
+    // 获取面试反馈
+    @POST("api/v1/feedback/")
+    suspend fun getFeedback(
+        @Body request: FeedbackRequest
+    ): Response<FeedbackResponse>
+    
+    // 清理简历数据
+    @POST("api/v1/remove-resume/")
+    suspend fun removeResume(
+        @Body request: RemoveResumeRequest
+    ): Response<RemoveResumeResponse>
+    
+    // 上传文件更新数据库
+    @Multipart
+    @POST("api/v1/upload-resume/")
+    suspend fun uploadResumeForUpdate(
+        @Part file: MultipartBody.Part
+    ): Response<UploadResumeResponse>
     
     companion object {
         private const val BASE_URL = "https://115.29.170.231/"
@@ -269,6 +292,15 @@ data class GraphRAGResponse(
     val context_data: Any? = null
 )
 
+// 提交面试答案请求数据（文本格式）
+data class SubmitInterviewAnswerRequest(
+    val id: String,
+    val index: Int,
+    val answer_type: String,
+    val question: String,
+    val answer: String
+)
+
 // 提交答案响应数据（按照API文档格式）
 data class SubmitAnswerResponse(
     val id: String,
@@ -281,4 +313,26 @@ data class SubmitAnswerResponse(
     val video_size: Long? = null,         // 视频文件大小
     val progress: Double,                 // 进度百分比
     val is_completed: Boolean             // 是否完成
+)
+
+// 反馈请求数据模型
+data class FeedbackRequest(
+    val id: String,
+    val answer_type: String = "text"
+)
+
+// 反馈响应数据模型
+data class FeedbackResponse(
+    val id: String,
+    val feedbacks: Map<String, String>
+)
+
+// 清理简历请求数据模型
+data class RemoveResumeRequest(
+    val id: String
+)
+
+// 清理简历响应数据模型
+data class RemoveResumeResponse(
+    val message: String
 ) 

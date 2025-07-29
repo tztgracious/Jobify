@@ -68,6 +68,17 @@
                         android:text="Your Answer: ..."
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"/>
+                    
+                    <!-- 反馈显示区域 -->
+                    <TextView
+                        android:id="@+id/tvFeedback1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Feedback: Loading..."
+                        android:textColor="@color/feedback_color"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -108,6 +119,17 @@
                         android:text="Your Answer: ..."
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"/>
+                    
+                    <!-- 反馈显示区域 -->
+                    <TextView
+                        android:id="@+id/tvFeedback2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Feedback: Loading..."
+                        android:textColor="@color/feedback_color"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -148,6 +170,73 @@
                         android:text="Your Answer: ..."
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"/>
+                    
+                    <!-- 反馈显示区域 -->
+                    <TextView
+                        android:id="@+id/tvFeedback3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Feedback: Loading..."
+                        android:textColor="@color/feedback_color"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 技术反馈卡片 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/white">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+                    <TextView
+                        android:id="@+id/tvTechFeedback"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Tech Feedback: Loading..."
+                        android:textColor="@color/feedback_color"
+                        android:textSize="15sp"
+                        android:visibility="gone"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 总结卡片 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="8dp"
+                app:cardBackgroundColor="@color/primary_blue">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Interview Summary"
+                        android:textColor="@color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+                    <TextView
+                        android:id="@+id/tvSummary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Loading summary..."
+                        android:textColor="@color/white"
+                        android:textSize="16sp"
+                        android:visibility="gone"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -174,7 +263,7 @@
                     android:id="@+id/btnNext"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
-                    android:text="@string/next"
+                    android:text="Done"
                     android:textColor="@color/white"
                     app:backgroundTint="@color/primary_blue"
                     app:cornerRadius="24dp"/>

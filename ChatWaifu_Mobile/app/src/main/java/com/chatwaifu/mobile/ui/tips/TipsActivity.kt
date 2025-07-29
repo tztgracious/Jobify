@@ -24,6 +24,7 @@ class TipsActivity : AppCompatActivity() {
         questions = intent.getStringArrayListExtra("questions")
         answers = intent.getStringArrayListExtra("answers")
         solutions = intent.getStringArrayListExtra("solutions")
+        val docId = intent.getStringExtra("doc_id")
 
         // 绑定ViewModel数据到UI
         viewModel.tips.observe(this) { tips ->
@@ -41,12 +42,14 @@ class TipsActivity : AppCompatActivity() {
             questions?.let { intent.putStringArrayListExtra("questions", it) }
             answers?.let { intent.putStringArrayListExtra("answers", it) }
             solutions?.let { intent.putStringArrayListExtra("solutions", it) }
+            docId?.let { intent.putExtra("doc_id", it) }
             startActivity(intent)
             finish()
         }
         binding.btnHelpUpdateDatabase.setOnClickListener {
-            // 跳转到UpdateDatabaseActivity
+            // 跳转到UpdateDatabaseActivity并传递doc_id
             val intent = Intent(this, com.chatwaifu.mobile.ui.updatedb.UpdateDatabaseActivity::class.java)
+            docId?.let { intent.putExtra("doc_id", it) }
             startActivity(intent)
             finish()
         }
