@@ -16,10 +16,7 @@ from resume.utils import get_session_by_id
 from .models import InterviewSession
 from .utils import (
     get_feedback_using_openai_text,
-    get_feedback_using_openai_video,
-    get_questions_using_openai,
-    process_text_answer,
-    process_video_answer,
+    get_questions_using_openai, get_feedback_using_openai_multi_agent,
 )
 
 
@@ -361,9 +358,41 @@ def submit_interview_answer(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        result = process_text_answer(
-            session_id, question_index, question_text, answer, interview_session
-        )
+        # Validate that the question text matches
+        if interview_session.questions[question_index] != question_text:
+            logger.warning(f"Question mismatch at index {question_index} for session {session_id}")
+            return Response(
+                {"error": "Question text does not match the question at the specified index"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Ensure answers list is properly sized
+        answers = interview_session.answers or []
+        while len(answers) <= question_index:
+            answers.append("")
+        
+        # Update the answer at the specified index
+        answers[question_index] = answer
+        interview_session.answers = answers
+        interview_session.save()
+        
+        # Calculate progress
+        answered_questions = sum(1 for ans in answers if ans.strip())
+        total_questions = len(interview_session.questions)
+        progress = round((answered_questions / total_questions) * 100, 2) if total_questions > 0 else 0
+        is_completed = answered_questions == total_questions
+        
+        logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with text answer")
+        
+        result = {
+            "id": session_id,
+            "message": f"Text answer submitted for question {question_index + 1}",
+            "question": question_text,
+            "answer_type": "text",
+            "answer": answer,
+            "progress": progress,
+            "is_completed": is_completed,
+        }
 
     elif answer_type == "video":
         video_file = request.FILES.get("video")
@@ -375,10 +404,11 @@ def submit_interview_answer(request):
                 {"error": "video file is required for video answers"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        result = process_video_answer(
-            session_id, question_index, question_text, video_file, interview_session
-        )
+        # TODO: implement processing logic
+        # result = process_video_answer(
+        #     session_id, question_index, question_text, video_file, interview_session
+        # )
+        result = {"error": "Video processing not yet implemented"}
 
     else:
         logger.warning("submit_answer called with invalid answer_type")
@@ -389,11 +419,10 @@ def submit_interview_answer(request):
 
     # Handle the result from utility functions
     if "error" in result:
-        return Response({"error": result["error"]}, status=result["status"])
+        return Response({"error": result["error"]}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Remove status from result before returning
-    status_code = result.pop("status", 200)
-    return Response(result, status=status_code)
+    # Return the successful result
+    return Response(result, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
@@ -429,7 +458,7 @@ def get_feedback(request):
             logger.info(
                 f"Retrieving feedback for id: {session_id}, answer_type: {answer_type}"
             )
-            feedback = get_feedback_using_openai_text(session)
+            feedback = get_feedback_using_openai_multi_agent(session)
             if not feedback:
                 logger.warning(
                     f"No feedback questions generated for session {session.id}"
@@ -448,7 +477,7 @@ def get_feedback(request):
             logger.info(
                 f"Retrieving feedback for id: {session_id}, answer_type: {answer_type}"
             )
-            feedback = get_feedback_using_openai_video(session)
+            # feedback = get_feedback_using_openai_video(session)
             return Response(
                 {"error": "Video feedback not yet implemented"},
                 status=status.HTTP_400_BAD_REQUEST,
