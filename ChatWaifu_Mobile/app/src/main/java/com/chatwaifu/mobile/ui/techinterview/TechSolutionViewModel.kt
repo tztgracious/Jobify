@@ -52,7 +52,9 @@ class TechSolutionViewModel : ViewModel() {
                             val standardAnswer = graphRAGResponse.response
                             Log.d(TAG, "Standard answer: '$standardAnswer'")
                             
-                            val solution = TechSolution(standardAnswer = standardAnswer)
+                            // 去除中括号内容
+                            val cleanedAnswer = removeSquareBracketsContent(standardAnswer)
+                            val solution = TechSolution(standardAnswer = cleanedAnswer)
                             _solution.postValue(solution)
                             break // 成功获取答案，退出重试循环
                         } else {
@@ -76,7 +78,8 @@ class TechSolutionViewModel : ViewModel() {
                         
                         // 使用默认答案作为回退
                         val defaultAnswer = getDefaultAnswer(question)
-                        val solution = TechSolution(standardAnswer = defaultAnswer)
+                        val cleanedDefaultAnswer = removeSquareBracketsContent(defaultAnswer)
+                        val solution = TechSolution(standardAnswer = cleanedDefaultAnswer)
                         _solution.postValue(solution)
                     } else {
                         // 等待一段时间后重试，延迟时间递增
@@ -89,6 +92,14 @@ class TechSolutionViewModel : ViewModel() {
             
             _isLoading.postValue(false)
         }
+    }
+    
+    /**
+     * 去除文本中的中括号及其内容
+     * 例如: "dasdsa[source data]" -> "dasdsa"
+     */
+    private fun removeSquareBracketsContent(text: String): String {
+        return text.replace(Regex("\\[[^\\]]*\\]"), "")
     }
     
     private fun getDefaultAnswer(question: String): String {

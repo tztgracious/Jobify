@@ -157,11 +157,11 @@
     <string name="resume_issues_title">Resume Issues Detection</string>
     <string name="resume_issues_description">We analyzed your resume and found the following areas for improvement</string>
     <string name="resume_analysis_results">Analysis Results</string>
-    <string name="analyzing_resume">Analyzing resume...</string>
+    <string name="analyzing_resume">Analyzing your resume for grammar and spelling issues...</string>
     <string name="no_issues_found">No Issues Found</string>
-    <string name="resume_looks_good">Your resume looks great! No obvious issues were found.</string>
+    <string name="resume_looks_good">Excellent! Your resume has been analyzed and no grammar or spelling issues were found. Your writing is clear and professional.</string>
     <string name="improvement_tips">Improvement Tips</string>
-    <string name="improvement_tips_description">Based on industry best practices, we recommend focusing on the issues mentioned above to improve your resume quality.</string>
+    <string name="improvement_tips_description">Review the issues found above and consider the suggestions provided. Focus on grammar, spelling, and clarity to make your resume more professional and impactful.</string>
     
     <!-- Keywords Activity -->
     <string name="extracted_keywords">Extracted Keywords</string>

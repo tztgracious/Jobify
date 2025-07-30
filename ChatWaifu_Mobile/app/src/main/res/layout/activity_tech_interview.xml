@@ -52,7 +52,7 @@
                         android:id="@+id/tvQuestion"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/sample_tech_question"
+                        android:text="@string/loading"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:lineSpacingExtra="4dp"/>

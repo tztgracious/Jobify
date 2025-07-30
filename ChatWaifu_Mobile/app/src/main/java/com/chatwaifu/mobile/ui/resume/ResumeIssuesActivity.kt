@@ -73,7 +73,22 @@ class ResumeIssuesActivity : AppCompatActivity() {
         viewModel.issues.observe(this) { issues ->
             Log.d(TAG, "Received issues: ${issues.size} items")
             if (issues.isNotEmpty()) {
-                showIssuesList(issues)
+                // 验证问题数据是否包含有效内容
+                val validIssues = issues.filter { issue ->
+                    issue.title.isNotBlank() && 
+                    issue.description.isNotBlank() &&
+                    !issue.title.contains("{") && 
+                    !issue.description.contains("{") &&
+                    !issue.title.contains("[") && 
+                    !issue.description.contains("[")
+                }
+                
+                if (validIssues.isNotEmpty()) {
+                    showIssuesList(validIssues)
+                } else {
+                    // 如果所有问题都无效，显示成功消息
+                    showEmptyState()
+                }
             } else {
                 // 只有在没有收到任何issues时才显示空状态
                 // 如果issues列表为空但ViewModel还在加载，则不显示空状态
@@ -95,8 +110,30 @@ class ResumeIssuesActivity : AppCompatActivity() {
         viewModel.error.observe(this) { error ->
             if (error.isNotEmpty()) {
                 Log.d(TAG, "Showing error: $error")
-                showSnackbar(error)
-                viewModel.clearError()
+                
+                // 只有在没有有效数据时才显示错误
+                val currentIssues = viewModel.issues.value
+                if (currentIssues.isNullOrEmpty()) {
+                    // 根据错误类型显示不同的消息
+                    val userFriendlyError = when {
+                        error.contains("Network error") -> "Connection issue. Please check your internet connection and try again."
+                        error.contains("Analysis failed") -> "Resume analysis encountered an issue. Please try again."
+                        error.contains("processing") -> "Resume is still being analyzed. Please wait a moment."
+                        error.contains("longer than expected") -> "Analysis is taking longer than usual. Please try again in a few minutes."
+                        else -> "An unexpected issue occurred. Please try again."
+                    }
+                    
+                    showSnackbar(userFriendlyError)
+                    viewModel.clearError()
+                    
+                    // 如果出现错误且没有数据，显示默认的成功消息
+                    if (!viewModel.isLoading.value!!) {
+                        showEmptyState()
+                    }
+                } else {
+                    // 如果有有效数据，清除错误但不显示错误消息
+                    viewModel.clearError()
+                }
             }
         }
     }

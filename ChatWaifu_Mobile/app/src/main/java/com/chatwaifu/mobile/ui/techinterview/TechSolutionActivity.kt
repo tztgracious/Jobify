@@ -62,7 +62,9 @@ class TechSolutionActivity : AppCompatActivity() {
 
     private fun setupObservers() {
         viewModel.solution.observe(this) { solution ->
-            binding.tvStandardAnswer.text = solution.standardAnswer
+            // 去除中括号内容后显示标准答案
+            val cleanedAnswer = removeSquareBracketsContent(solution.standardAnswer)
+            binding.tvStandardAnswer.text = cleanedAnswer
         }
         
         viewModel.isLoading.observe(this) { isLoading ->
@@ -78,7 +80,9 @@ class TechSolutionActivity : AppCompatActivity() {
             if (error.isNotEmpty()) {
                 showSnackbar(error)
                 // 如果API调用失败，显示默认答案
-                binding.tvStandardAnswer.text = "This is a comprehensive answer that covers all the key points. Consider providing specific examples and real-world applications to strengthen your response."
+                val defaultAnswer = "This is a comprehensive answer that covers all the key points. Consider providing specific examples and real-world applications to strengthen your response."
+                val cleanedDefaultAnswer = removeSquareBracketsContent(defaultAnswer)
+                binding.tvStandardAnswer.text = cleanedDefaultAnswer
             }
         }
     }
@@ -88,9 +92,9 @@ class TechSolutionActivity : AppCompatActivity() {
         val question = intent.getStringExtra("tech_question") ?: getString(R.string.sample_tech_question)
         val answer = intent.getStringExtra("tech_answer") ?: getString(R.string.sample_user_answer)
         
-        // 设置问题和答案
-        binding.tvQuestion.text = question
-        binding.tvYourAnswer.text = answer
+        // 设置问题和答案，去除中括号内容
+        binding.tvQuestion.text = removeSquareBracketsContent(question)
+        binding.tvYourAnswer.text = removeSquareBracketsContent(answer)
         
         // 从ViewModel加载解决方案
         val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
@@ -98,6 +102,14 @@ class TechSolutionActivity : AppCompatActivity() {
         viewModel.loadSolution(docId, jobTitle, question, answer)
         
         Log.d(TAG, "Loading solution for question: $question")
+    }
+
+    /**
+     * 去除文本中的中括号及其内容
+     * 例如: "dasdsa[source data]" -> "dasdsa"
+     */
+    private fun removeSquareBracketsContent(text: String): String {
+        return text.replace(Regex("\\[[^\\]]*\\]"), "")
     }
 
     private fun showSnackbar(message: String) {

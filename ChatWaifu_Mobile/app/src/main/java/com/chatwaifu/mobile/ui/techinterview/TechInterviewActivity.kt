@@ -110,8 +110,9 @@ class TechInterviewActivity : AppCompatActivity() {
         
         viewModel.isLoading.observe(this) { isLoading ->
             if (isLoading) {
+                binding.tvQuestion.text = getString(R.string.loading)
                 binding.btnNext.isEnabled = false
-                binding.btnNext.text = "Loading..."
+                binding.btnNext.text = getString(R.string.loading)
                 // 可以添加进度条或其他加载指示器
             } else {
                 binding.btnNext.isEnabled = true
@@ -122,6 +123,8 @@ class TechInterviewActivity : AppCompatActivity() {
         viewModel.error.observe(this) { error ->
             if (error.isNotEmpty()) {
                 showSnackbar(error)
+                // 如果加载失败，显示错误信息
+                binding.tvQuestion.text = "Failed to load question. Please try again."
             }
         }
         
@@ -137,6 +140,9 @@ class TechInterviewActivity : AppCompatActivity() {
         // 总是从API加载问题，因为问题是从后端动态生成的
         val docId = intent.getStringExtra("doc_id") ?: "mock-doc-id-12345"
         val jobTitle = intent.getStringExtra("job_title") ?: "Software Engineer"
+        
+        // 立即显示加载状态
+        binding.tvQuestion.text = getString(R.string.loading)
         
         Log.d(TAG, "loadQuestion called with docId: $docId, jobTitle: $jobTitle")
         Log.d(TAG, "Current tvQuestion text: '${binding.tvQuestion.text}'")
