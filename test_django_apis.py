@@ -42,11 +42,13 @@ class APITester:
         self.total_tests = 0
         self.passed_tests = 0
         self.failed_tests = 0
+        self.skipped_tests = 0
         self.id = None
         self.save_response_flag = save_response
         self.interview_questions = []  # Store questions for interview tests
         self.tech_questions = []  # Store technical questions for interview tests
         self.failed_test_names = []  # Track names of failed tests
+        self.skipped_test_names = []  # Track names of skipped tests
 
     def print_header(self, test_name: str):
         print(f"\n{Colors.BLUE}{'=' * 50}{Colors.NC}")
@@ -120,6 +122,13 @@ class APITester:
         """Mark a test as failed due to exception"""
         self.failed_tests += 1
         self.failed_test_names.append(f"{test_name} (Exception)")
+
+    def mark_test_skipped(self, test_name: str, reason: str = ""):
+        """Mark a test as skipped"""
+        self.skipped_tests += 1
+        skip_reason = f" ({reason})" if reason else ""
+        self.skipped_test_names.append(f"{test_name}{skip_reason}")
+        print(f"{Colors.YELLOW}⚠️  SKIP: {test_name}{skip_reason}{Colors.NC}")
 
     def save_response(self, endpoint: str, response_data: Dict):
         if not self.save_response_flag:
@@ -297,7 +306,7 @@ startxref
     def test_get_keywords_valid(self):
         """Test get keywords with valid id"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("GET /api/v1/get-keywords/ (valid id)", "No id available")
             return {}
 
         self.print_header("Get Keywords - Valid id")
@@ -415,7 +424,7 @@ startxref
     def test_get_grammar_valid(self):
         """Test get grammar results with valid id"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("GET /api/v1/get-grammar-results/ (valid id)", "No id available")
             return {}
 
         self.print_header("Get Grammar Results - Valid id")
@@ -531,7 +540,7 @@ startxref
     def test_target_job_valid(self):
         """Test target job with valid data"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/target-job/ (valid data)", "No id available")
             return {}
 
         self.print_header("Target Job - Valid")
@@ -579,7 +588,7 @@ startxref
     def test_get_questions_valid(self):
         """Test get interview questions with valid id"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/get-all-questions/ (valid id)", "No id available")
             return {}
 
         self.print_header("Get Interview Questions - Valid")
@@ -670,7 +679,7 @@ startxref
     def test_submit_tech_question_valid(self):
         """Test submitting technical question answers"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/submit-tech-answer/", "No id available")
             return {}
 
         self.print_header("Submit Technical Question Answers - Valid")
@@ -722,7 +731,7 @@ startxref
     def test_submit_interview_answer(self):
         """Test submitting answers to interview questions"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/submit-interview-answer/", "No id available")
             return {}
 
         self.print_header("Submit Interview Answers - Valid")
@@ -817,7 +826,7 @@ startxref
     def test_get_feedback(self):
         """Test getting feedback on submitted answers"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/feedback/", "No id available")
             return {}
 
         self.print_header("Get Feedback - Valid")
@@ -904,9 +913,7 @@ startxref
             response_data = self.parse_response(response)
 
             if response.status_code == 404:
-                print(
-                    f"{Colors.YELLOW}⚠️  SKIP: Signup endpoint not available (404){Colors.NC}"
-                )
+                self.mark_test_skipped("POST /api/v1/signup/ (new user)", "Signup endpoint not available (404)")
                 return response_data
             else:
                 self.check_result(
@@ -982,13 +989,25 @@ startxref
         print(f"{Colors.BLUE}{'=' * 50}{Colors.NC}")
         print(f"{Colors.GREEN}✅ Passed: {self.passed_tests}{Colors.NC}")
         print(f"{Colors.RED}❌ Failed: {self.failed_tests}{Colors.NC}")
+        print(f"{Colors.YELLOW}⚠️  Skipped: {self.skipped_tests}{Colors.NC}")
         print(f"{Colors.BLUE}📋 Total:  {self.total_tests}{Colors.NC}")
+
+        # Verify math
+        calculated_total = self.passed_tests + self.failed_tests + self.skipped_tests
+        if calculated_total != self.total_tests:
+            print(f"{Colors.YELLOW}⚠️  Note: Calculated total ({calculated_total}) doesn't match recorded total ({self.total_tests}){Colors.NC}")
 
         # Show failed tests if any
         if self.failed_test_names:
             print(f"\n{Colors.RED}❌ FAILED TESTS:{Colors.NC}")
             for i, test_name in enumerate(self.failed_test_names, 1):
                 print(f"{Colors.RED}  {i}. {test_name}{Colors.NC}")
+
+        # Show skipped tests if any
+        if self.skipped_test_names:
+            print(f"\n{Colors.YELLOW}⚠️  SKIPPED TESTS:{Colors.NC}")
+            for i, test_name in enumerate(self.skipped_test_names, 1):
+                print(f"{Colors.YELLOW}  {i}. {test_name}{Colors.NC}")
 
         if self.failed_tests == 0:
             print(f"\n{Colors.GREEN}🎉 All tests passed!{Colors.NC}")
