@@ -428,7 +428,8 @@ def submit_interview_answer(request):
 @api_view(["POST"])
 def get_feedback(request):
     """
-    Retrieve interview feedback for a given id.
+    Fetch feedback for a given interview session from the database.
+
     Payload: {
         "id": "uuid",
         "answer_type": "text" | "video,
@@ -439,7 +440,11 @@ def get_feedback(request):
         "feedbacks": {
             "tech_feedbacks": ["feedback1"],
             "interview_feedbacks": ["feedback1", "feedback2", "feedback3"],
-        }
+        },
+        "completed": true,
+        "message": "Feedback retrieved successfully",
+        "duration": "5 seconds"
+    }
     """
     logger.info("=== FEEDBACK REQUEST STARTED ===")
     session_id = request.data.get("id")
@@ -452,42 +457,88 @@ def get_feedback(request):
             f"Feedback questions requested for non-existent id: {session_id}"
         )
         return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
-    answer_type = request.data.get("answer_type", "")
+
+    if session.feedback_status == InterviewSession.Status.COMPLETE:
+        logger.info(
+            f"Fetching feedback for id: {session_id}"
+        )
+        return Response({
+                "id": session_id,
+                "feedbacks": session.feedback,
+                "completed": True,
+                "message": "Feedback generated",
+                "duration": (
+                    session.feedback_completed - session.feedback_started
+                ).total_seconds() if session.feedback_started and session.feedback_completed else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    elif session.feedback_status == InterviewSession.Status.PROCESSING:
+        logger.info(
+            f"Feedback generation in progress for id: {session_id}"
+        )
+        return Response(
+            {
+                "id": session_id,
+                "feedbacks": session.feedback,
+                "completed": False,
+                "message": "Feedback generation in progress",
+                "duration": (
+                    timezone.now() - session.feedback_started
+                ).total_seconds() if session.feedback_started else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+        
+    else:
+
+        logger.info("Feedback called when feedback_status is not set")
+        return Response(
+            {
+                "id": session_id,
+                "feedbacks": None,
+                "completed": False,
+                "message": f"Feedback status: {session.feedback_status}",
+                "duration": str(
+                    timezone.now() - session.feedback_started
+                ) if session.feedback_started else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+def generate_feedback_background(interview_session):
+    """
+    Background task to generate feedback for an interview session.
+    """
+    session_id = interview_session.id
+    interview_session.feedback_started_at = timezone.now()
+    interview_session.save()
+    answer_type = interview_session.answer_type
+
     match answer_type:
         case "text":
             logger.info(
-                f"Retrieving feedback for id: {session_id}, answer_type: {answer_type}"
+                f"Retrieving feedback for id: {interview_session.id}, answer_type: {answer_type}"
             )
-            feedback = get_feedback_using_openai_multi_agent(session)
+            feedback = get_feedback_using_openai_multi_agent(interview_session)
             if not feedback:
                 logger.warning(
-                    f"No feedback questions generated for session {session.id}"
+                    f"No feedback questions generated for session {interview_session.id}"
                 )
-                return Response(
-                    {"error": "No feedback questions found"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-            session.feedback = feedback
-            session.save()
-            return Response(
-                {"id": session_id, "feedbacks": feedback}, status=status.HTTP_200_OK
-            )
+            interview_session.feedback = feedback
+
         case "video":
             # TODO: implement video feedback
             logger.info(
                 f"Retrieving feedback for id: {session_id}, answer_type: {answer_type}"
             )
             # feedback = get_feedback_using_openai_video(session)
-            return Response(
-                {"error": "Video feedback not yet implemented"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        case _:
-            logger.warning("get_feedback called with invalid answer_type")
-            return Response(
-                {"error": "answer_type must be either 'text' or 'video'"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # interview_session.feedback = feedback
+
+    interview_session.feedback_completed_at = timezone.now()
+    interview_session.save()
 
 
 @api_view(["POST"])
