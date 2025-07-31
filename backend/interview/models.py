@@ -5,6 +5,7 @@ from django.db import models
 
 class InterviewSession(models.Model):
     class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
         PROCESSING = "processing", "Processing"
         COMPLETE = "complete", "Complete"
         FAILED = "failed", "Failed"
@@ -41,14 +42,25 @@ class InterviewSession(models.Model):
     tech_answers = models.JSONField(
         default=list
     )  # ["Tech Answer 1", "Tech Answer 2", "Tech Answer 3"]
-    tech_feedback = models.TextField(blank=True, null=True)
 
     # General interview fields
     questions = models.JSONField(
         default=list
     )  # ["Question 1?", "Question 2?", "Question 3?"]
     answers = models.JSONField(default=list)  # ["Answer 1", "Answer 2", "Answer 3"]
-    feedback = models.JSONField(default=dict)
+    is_completed = models.BooleanField(
+        default=False
+    )  # Track if all questions are answered
+
+    # feedback
+    feedback = models.JSONField(default=dict)   # All feedbacks in one JSON object
+    feedback_status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    feedback_started = models.DateTimeField(null=True, blank=True, help_text="When feedback generation started")
+    feedback_completed = models.DateTimeField(
+        null=True, blank=True, help_text="When feedback generation was completed"
+    )
 
     # Timestamps
     uploaded_at = models.DateTimeField(
@@ -56,9 +68,7 @@ class InterviewSession(models.Model):
     )  # When resume was uploaded
     created_at = models.DateTimeField(auto_now_add=True)  # When session was created
     updated_at = models.DateTimeField(auto_now=True)
-    is_completed = models.BooleanField(
-        default=False
-    )  # Track if all questions are answered
+
 
     def __str__(self):
         return f"Interview Session {self.id} ({self.resume_status})"
