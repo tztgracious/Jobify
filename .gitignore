@@ -118,3 +118,10 @@ graphrag-api/graphrag/openl/cache/
 
 #test code for multi agent 
 backend/interview/test_multi_agent.py
+
+# GraphRAG cache folders
+graphrag-api/graphrag/openl/cache/
+**/graphrag/**/cache/
+**/cache/
+
+resume.pdf
