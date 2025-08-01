@@ -547,8 +547,9 @@ def get_answers_status(interview_session) -> bool:
                               if answer and answer.strip()])
     interview_total = len(interview_session.questions or [])
     interview_completed = interview_answered == interview_total if interview_total > 0 else True
-
+    video_completed = interview_session.videos.count() == 3
     # Update completion status
-    interview_session.is_completed = tech_completed and interview_completed
+    interview_session.is_completed = (tech_completed and interview_completed) or (tech_completed and video_completed)
+    logger.info(f"Interview session {interview_session.id} completion status updated: {interview_session.is_completed}")
     interview_session.save()
     return interview_session.is_completed
