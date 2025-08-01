@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import requests
 from requests import session
 
-from interview.interview_session import InterviewSession
+from .models.interview_session import InterviewSession
 from interview.multi_agent import BaseAgent, InterviewerRole
 from jobify_backend.logger import logger
 

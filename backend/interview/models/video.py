@@ -2,7 +2,7 @@ import uuid
 import os
 from django.db import models
 from django.conf import settings
-
+from .interview_session import InterviewSession
 
 class Video(models.Model):
     class VideoType(models.TextChoices):
@@ -110,10 +110,7 @@ class Video(models.Model):
             models.Index(fields=['interview_session', 'question_index']),
             models.Index(fields=['status']),
         ]
-        
-from .models import InterviewSession, Video
-from django.core.files.base import ContentFile
-import os
+
 
 def add_video_to_session(session_id, video_file, question_index=None, question_text=""):
     """

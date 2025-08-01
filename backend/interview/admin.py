@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .interview_session import InterviewSession
+from .models.interview_session import InterviewSession
 
 
 @admin.register(InterviewSession)

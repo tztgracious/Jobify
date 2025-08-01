@@ -13,9 +13,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from resume.utils import get_session_by_id
 
-from .interview_session import InterviewSession
+from .models.interview_session import InterviewSession
 from .utils import (
-    get_feedback_using_openai_text,
     get_questions_using_openai,
     get_feedback_using_openai_multi_agent,
     get_answers_status
@@ -95,32 +94,6 @@ def get_all_questions(request):
             "interview_questions": interview_questions,
             "message": "All questions retrieved successfully",
         },
-        status=status.HTTP_200_OK,
-    )
-
-
-@deprecated.deprecated(reason="Use get_all_questions instead")
-@api_view(["POST"])
-def get_tech_question(request):
-    """
-    Retrieve tech questions for a given id.
-    Accepts JSON data with:
-        - id: The resume document ID
-    """
-    session_id = request.data.get("id")
-    if not session_id:
-        logger.warning("get_interview_questions called without id")
-        return Response({"error": "id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    resume = get_session_by_id(session_id)
-    if not resume:
-        logger.warning(
-            f"Interview questions requested for non-existent id: {session_id}"
-        )
-        return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
-    # TODO: write proper tech questions
-    return Response(
-        {"id": session_id, "tech_questions": resume.tech_questions},
         status=status.HTTP_200_OK,
     )
 
@@ -216,72 +189,6 @@ def submit_tech_answer(request):
         },
         status=status.HTTP_200_OK,
     )
-
-
-@deprecated.deprecated(reason="Use get_all_questions instead")
-@api_view(["POST"])
-def get_interview_questions(request):
-    """
-    Retrieve interview questions for a given id.
-    Accepts JSON data with:
-        - id: The resume document ID
-    """
-    session_id = request.data.get("id")
-    if not session_id:
-        logger.warning("get_interview_questions called without id")
-        return Response({"error": "id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    resume = get_session_by_id(session_id)
-    if not resume:
-        logger.warning(
-            f"Interview questions requested for non-existent id: {session_id}"
-        )
-        return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    # Check if an interview session already exists for this id
-    existing_session = InterviewSession.objects.filter(id=session_id).first()
-    if existing_session:
-        logger.info(f"Returning existing interview session for id: {session_id}")
-        return Response(
-            {"id": session_id, "interview_questions": existing_session.questions},
-            status=status.HTTP_200_OK,
-        )
-
-    target_job: str = resume.target_job
-    keywords: list[str] = resume.keywords or []
-    interview_questions = get_questions_using_openai(target_job, keywords)
-    if not interview_questions:
-        logger.warning(f"No interview questions found for id: {session_id}")
-        return Response(
-            {"error": "No interview questions found"}, status=status.HTTP_404_NOT_FOUND
-        )
-
-    # Create a new InterviewSession
-    try:
-        interview_session = InterviewSession.objects.create(
-            resume=resume, id=session_id, questions=interview_questions
-        )
-        logger.info(
-            f"Created new interview session {interview_session.id} for id: {session_id}"
-        )
-
-        return Response(
-            {"id": session_id, "interview_questions": interview_questions},
-            status=status.HTTP_201_CREATED,
-        )
-
-    except Exception as e:
-        logger.error(
-            f"Failed to create interview session for id {session_id}: {str(e)}"
-        )
-        return Response(
-            {
-                "id": session_id,
-                "interview_questions": interview_questions,
-                "error": "Failed to create interview session",
-            },
-            status=status.HTTP_200_OK,
-        )
 
 
 @api_view(["POST"])
@@ -514,6 +421,7 @@ def generate_feedback_background(interview_session):
     """
     session_id = interview_session.id
     interview_session.feedback_started_at = timezone.now()
+    interview_session.feedback_status = InterviewSession.Status.PROCESSING
     interview_session.save()
     answer_type = interview_session.answer_type
 
@@ -538,6 +446,7 @@ def generate_feedback_background(interview_session):
             # interview_session.feedback = feedback
 
     interview_session.feedback_completed_at = timezone.now()
+    interview_session.feedback_status = InterviewSession.Status.COMPLETE
     interview_session.save()
 
 

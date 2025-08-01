@@ -16,8 +16,8 @@ from typing import Any, Dict
 import requests
 
 # Configuration
-BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
-# BASE_URL = "http://localhost:8000"  # Uncomment for local testing
+# BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
+BASE_URL = "http://localhost:8000"  # Uncomment for local testing
 # BASE_URL = "http://115.29.170.231"  # Use HTTP if HTTPS has issues
 
 # SSL Configuration for self-signed certificates
@@ -824,25 +824,60 @@ startxref
             return {}
 
     def test_get_feedback(self):
-        """Test getting feedback on submitted answers"""
+        """Test getting feedback on submitted answers, waiting for completion."""
         if not self.id:
             self.mark_test_skipped("POST /api/v1/feedback/", "No id available")
             return {}
 
-        self.print_header("Get Feedback - Valid")
+        self.print_header("Get Feedback - Valid (with polling)")
         try:
-            start = time.time()
-            response = requests.post(
-                f"{self.base_url}/api/v1/feedback/",
-                json={"id": self.id, "answer_type": "text"},
-                verify=VERIFY_SSL,
-            )
-            end = time.time()
+            max_retries = 24  # Wait up to 24 * 5 = 120 seconds
+            retry_delay = 5  # 5 seconds
+
+            start_time = time.time()
+
+            for attempt in range(max_retries):
+                print(
+                    f"{Colors.YELLOW}⏳ Requesting feedback... (Attempt {attempt + 1}/{max_retries}){Colors.NC}"
+                )
+                response = requests.post(
+                    f"{self.base_url}/api/v1/feedback/",
+                    json={"id": self.id, "answer_type": "text"},
+                    verify=VERIFY_SSL,
+                )
+                response_data = self.parse_response(response)
+
+                # Check if feedback generation is complete
+                if response.status_code == 200 and response_data.get("completed") is True:
+                    print(f"{Colors.GREEN}✅ Feedback generation complete!{Colors.NC}")
+                    break  # Exit loop on success
+
+                # Check if still processing
+                if response.status_code == 200 and response_data.get("completed") is False:
+                    if attempt < max_retries - 1:
+                        print(
+                            f"{Colors.YELLOW}⏳ Feedback is processing. Waiting {retry_delay} seconds...{Colors.NC}"
+                        )
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(
+                            f"{Colors.RED}❌ Feedback generation timed out after {max_retries} attempts.{Colors.NC}"
+                        )
+                        break
+                else:
+                    # Handle unexpected status or error
+                    print(
+                        f"{Colors.RED}❌ Unexpected response while waiting for feedback (Status: {response.status_code}).{Colors.NC}"
+                    )
+                    break
+
+            end_time = time.time()
+            total_duration = end_time - start_time
             print(
-                f"{Colors.YELLOW}⏱️  Response time: {end - start:.2f} seconds{Colors.NC}"
+                f"{Colors.YELLOW}⏱️  Total feedback retrieval time: {total_duration:.2f} seconds{Colors.NC}"
             )
 
-            response_data = self.parse_response(response)
             self.check_result(
                 200,
                 response.status_code,
@@ -851,40 +886,33 @@ startxref
             )
 
             # Display feedback information
-            if response.status_code == 200 and "feedbacks" in response_data:
+            if response.status_code == 200 and "feedbacks" in response_data and response_data.get("feedbacks"):
                 feedbacks = response_data["feedbacks"]
 
-                # Count individual question feedback
-                question_feedback_count = len(
-                    [k for k in feedbacks.keys() if "feedback" in k and k != "summary"]
-                )
+                # Display tech and interview feedback
+                tech_feedbacks = feedbacks.get("tech_feedbacks", [])
+                interview_feedbacks = feedbacks.get("interview_feedbacks", [])
+
                 print(
-                    f"{Colors.GREEN}✅ Received feedback for {question_feedback_count} questions{Colors.NC}"
+                    f"{Colors.GREEN}✅ Received {len(tech_feedbacks)} tech feedback(s) and {len(interview_feedbacks)} interview feedback(s).{Colors.NC}"
                 )
 
-                # Show summary if available
-                if "summary" in feedbacks:
-                    summary = feedbacks["summary"]
-                    preview = summary[:150] + "..." if len(summary) > 150 else summary
-                    print(f"{Colors.YELLOW}📝 Summary preview: {preview}{Colors.NC}")
+                # Show a preview of the first tech feedback
+                if tech_feedbacks:
+                    preview = tech_feedbacks[0][:150] + "..." if len(tech_feedbacks[0]) > 150 else tech_feedbacks[0]
+                    print(f"{Colors.YELLOW}📝 Tech feedback preview: {preview}{Colors.NC}")
 
-                # Show first question feedback as example
-                for key, feedback in feedbacks.items():
-                    if "question_" in key and "feedback" in key:
-                        preview = (
-                            feedback[:100] + "..." if len(feedback) > 100 else feedback
-                        )
-                        print(
-                            f"{Colors.YELLOW}💬 Sample feedback: {preview}{Colors.NC}"
-                        )
-                        break
+                # Show a preview of the first interview feedback
+                if interview_feedbacks:
+                    preview = interview_feedbacks[0][:150] + "..." if len(interview_feedbacks[0]) > 150 else interview_feedbacks[0]
+                    print(f"{Colors.YELLOW}� Interview feedback preview: {preview}{Colors.NC}")
 
             elif response.status_code == 200:
                 print(
-                    f"{Colors.YELLOW}⚠️  Feedback retrieved but format unexpected{Colors.NC}"
+                    f"{Colors.YELLOW}⚠️  Feedback retrieved but format unexpected or empty.{Colors.NC}"
                 )
             else:
-                print(f"{Colors.RED}❌ Failed to retrieve feedback{Colors.NC}")
+                print(f"{Colors.RED}❌ Failed to retrieve feedback.{Colors.NC}")
 
             self.save_response("get_feedback", response_data)
             return response_data
