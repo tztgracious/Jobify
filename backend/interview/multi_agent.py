@@ -1,21 +1,11 @@
 import json
-import os
-import json
 import re
-import requests
-from typing import List, Dict, Any
-from dataclasses import dataclass
 from enum import Enum
-import asyncio
-import aiohttp
-from concurrent.futures import ThreadPoolExecutor
-import random
+from typing import List, Dict, Any
+
 import requests
-from django.conf import settings
-from interview.interview_session import InterviewSession
+
 from jobify_backend.logger import logger
-from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
-from rest_framework.response import Response
 
 
 class InterviewerRole(Enum):
@@ -28,12 +18,12 @@ class InterviewerRole(Enum):
 
 class BaseAgent:
     """Base class for all interview agents"""
-    
+
     def __init__(self, role: InterviewerRole, api_key: str):
         self.role = role
         self.api_key = api_key
         self.personality = self._define_personality()
-    
+
     def _define_personality(self) -> str:
         """Define the personality and focus for each agent type"""
         personalities = {
@@ -43,28 +33,28 @@ class BaseAgent:
                 - Career motivation and growth mindset
                 - Conflict resolution and teamwork
                 - Work-life balance and expectations""",
-            
+
             InterviewerRole.TECHNICAL_LEAD: """You are a senior technical lead who evaluates:
                 - Technical proficiency and coding skills
                 - System design and architecture understanding
                 - Problem-solving approach and analytical thinking
                 - Knowledge of best practices and design patterns
                 - Ability to explain complex technical concepts""",
-            
+
             InterviewerRole.HIRING_MANAGER: """You are a hiring manager who assesses:
                 - Practical experience and project management
                 - Business acumen and strategic thinking
                 - Leadership potential and initiative
                 - Ability to deliver results and meet deadlines
                 - Cross-functional collaboration skills""",
-            
+
             InterviewerRole.INDUSTRY_EXPERT: """You are an industry expert who examines:
                 - Current industry trends and technologies
                 - Competitive landscape knowledge
                 - Innovation and adaptability
                 - Domain-specific expertise
                 - Understanding of market challenges""",
-            
+
             InterviewerRole.SENIOR_PEER: """You are a senior peer who explores:
                 - Technical collaboration and mentoring abilities
                 - Code review and feedback skills
@@ -73,7 +63,7 @@ class BaseAgent:
                 - Day-to-day work scenarios"""
         }
         return personalities.get(self.role, "You are a professional interviewer.")
-    
+
     def generate_question_sync(self, target_job: str, keywords: List[str]) -> Dict[str, Any]:
         """Synchronous version of question generation"""
         prompt = f"""{self.personality}
@@ -95,7 +85,7 @@ class BaseAgent:
         Make the question practical and scenario-based when possible.
         Do not include any explanation or markdown, just the JSON.
         """
-        
+
         try:
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -108,12 +98,12 @@ class BaseAgent:
                     "messages": [{"role": "user", "content": prompt}]
                 }
             )
-            
+
             response_text = response.json()["choices"][0]["message"]["content"]
             # Clean and parse the response
             cleaned_text = clean_json_response(response_text)
             question_data = json.loads(cleaned_text)
-            
+
             return {
                 "question": question_data["question"],
                 "interviewer_role": self.role.value,
@@ -128,7 +118,7 @@ class BaseAgent:
                 "focus_area": "General Experience",
                 "difficulty": 2
             }
-    
+
     def evaluate_answer_sync(self, question: str, answer: str, target_job: str, keywords: List[str]) -> Dict[str, Any]:
         """Synchronous version of answer evaluation"""
         prompt = f"""{self.personality}
@@ -152,7 +142,7 @@ class BaseAgent:
         
         Score should be out of 10. Do not include any explanation or markdown, just the JSON.
         """
-        
+
         try:
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -163,7 +153,7 @@ class BaseAgent:
                 json={
                     "model": "openai/gpt-4o",
                     "messages": [{"role": "user", "content": prompt}],
-                        
+
                 }
             )
             response_text = response.json()["choices"][0]["message"]["content"]
@@ -179,6 +169,7 @@ class BaseAgent:
                 "improvement_tips": ["Try to provide more specific examples"]
             }
 
+
 def clean_json_response(response_text):
     """Clean markdown formatting from JSON responses"""
     # Remove leading/trailing whitespace
@@ -188,5 +179,5 @@ def clean_json_response(response_text):
     json_match = re.search(r'\{[^{}]*\{.*\}[^{}]*\}|\{[^{}]*\}', cleaned, re.DOTALL)
     if json_match:
         cleaned = json_match.group()
-    
+
     return cleaned
