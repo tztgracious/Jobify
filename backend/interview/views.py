@@ -1,7 +1,7 @@
 import os
 import time
 import uuid
-
+import threading
 import deprecated
 import django
 from django.conf import settings
@@ -16,7 +16,9 @@ from resume.utils import get_session_by_id
 from .interview_session import InterviewSession
 from .utils import (
     get_feedback_using_openai_text,
-    get_questions_using_openai, get_feedback_using_openai_multi_agent,
+    get_questions_using_openai,
+    get_feedback_using_openai_multi_agent,
+    get_answers_status
 )
 
 
@@ -400,10 +402,6 @@ def submit_interview_answer(request):
             logger.warning(
                 "submit_answer called without video file for video answer type"
             )
-            return Response(
-                {"error": "video file is required for video answers"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         # TODO: implement processing logic
         # result = process_video_answer(
         #     session_id, question_index, question_text, video_file, interview_session
@@ -420,7 +418,9 @@ def submit_interview_answer(request):
     # Handle the result from utility functions
     if "error" in result:
         return Response({"error": result["error"]}, status=status.HTTP_400_BAD_REQUEST)
-
+    if get_answers_status(interview_session):
+        threading.Thread(target=generate_feedback_background, args=(interview_session,)).start()
+        logger.info(f"Feedback generation thread started for session {interview_session.id}")
     # Return the successful result
     return Response(result, status=status.HTTP_200_OK)
 
