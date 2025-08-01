@@ -13,7 +13,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from resume.utils import get_session_by_id
 
-from .models import InterviewSession
+from .interview_session import InterviewSession
 from .utils import (
     get_feedback_using_openai_text,
     get_questions_using_openai, get_feedback_using_openai_multi_agent,
