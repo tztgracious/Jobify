@@ -110,3 +110,74 @@ class Video(models.Model):
             models.Index(fields=['interview_session', 'question_index']),
             models.Index(fields=['status']),
         ]
+        
+from .models import InterviewSession, Video
+from django.core.files.base import ContentFile
+import os
+
+def add_video_to_session(session_id, video_file, question_index=None, question_text=""):
+    """
+    Creates a Video object and associates it with an InterviewSession.
+
+    :param session_id: The UUID of the interview session.
+    :param video_file: An uploaded file object (e.g., from request.FILES).
+    :param question_index: The index of the question being answered.
+    :param question_text: The text of the question being answered.
+    :return: The created Video object or None if the session doesn't exist.
+    """
+    try:
+        # 1. Get the parent InterviewSession
+        session = InterviewSession.objects.get(id=session_id)
+    except InterviewSession.DoesNotExist:
+        # Handle case where session is not found
+        return None
+
+    # Define where to save the video
+    video_dir = os.path.join("videos", str(session.id))
+    os.makedirs(os.path.join(settings.MEDIA_ROOT, video_dir), exist_ok=True)
+    
+    # Create a unique filename
+    file_extension = os.path.splitext(video_file.name)[1]
+    unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+    relative_path = os.path.join(video_dir, unique_filename)
+    full_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+
+    # Save the file to the filesystem
+    with open(full_path, 'wb+') as destination:
+        for chunk in video_file.chunks():
+            destination.write(chunk)
+
+    # 2. Create the Video model instance
+    new_video = Video.objects.create(
+        # 3. Associate it with the session
+        interview_session=session,
+        
+        # 4. Fill in other details
+        original_filename=video_file.name,
+        file_path=relative_path,
+        file_size=video_file.size,
+        video_type=Video.VideoType.INTERVIEW_ANSWER, # Or determine this dynamically
+        question_index=question_index,
+        question_text=question_text,
+        status=Video.VideoStatus.UPLOADED
+    )
+    
+    # The video is now created and linked to the session.
+    # The .save() is handled by .create()
+    
+    return new_video
+
+# --- Example Usage (e.g., in a Django view) ---
+#
+# def upload_video_view(request):
+#     session_id = request.POST.get('id')
+#     video_file = request.FILES.get('video')
+#     
+#     if session_id and video_file:
+#         video_instance = add_video_to_session(session_id, video_file)
+#         if video_instance:
+#             return JsonResponse({"message": "Video added successfully!", "video_id": video_instance.id})
+#         else:
+#             return JsonResponse({"error": "Session not found"}, status=404)
+#     
+#     return JsonResponse({"error": "Missing session ID or video file"}, status=400)
