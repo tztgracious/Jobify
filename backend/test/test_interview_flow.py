@@ -3,7 +3,7 @@ import uuid
 
 from rest_framework.test import APITestCase
 
-from interview.models import InterviewSession
+from interview.interview_session import InterviewSession
 from resume.models import Resume
 
 

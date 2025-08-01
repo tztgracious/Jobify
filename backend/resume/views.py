@@ -4,7 +4,7 @@ import time
 import uuid
 
 from django.conf import settings
-from interview.models import InterviewSession
+from interview.interview_session import InterviewSession
 from interview.utils import get_questions_using_openai
 from jobify_backend.logger import logger
 from rest_framework import status

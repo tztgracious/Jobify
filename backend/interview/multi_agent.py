@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import random
 import requests
 from django.conf import settings
-from interview.models import InterviewSession
+from interview.interview_session import InterviewSession
 from jobify_backend.logger import logger
 from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
 from rest_framework.response import Response

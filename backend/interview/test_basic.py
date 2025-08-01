@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from resume.models import Resume
-from .models import InterviewSession
+from .interview_session import InterviewSession
 
 
 class BasicInterviewAPITest(APITestCase):
