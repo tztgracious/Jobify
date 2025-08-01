@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import requests
 from requests import session
 
-from interview.models import InterviewSession
+from interview.interview_session import InterviewSession
 from interview.multi_agent import BaseAgent, InterviewerRole
 from jobify_backend.logger import logger
 
@@ -532,3 +532,23 @@ def _synthesize_feedback(questions: List[str], answers: List[str],
                        f"Practice providing specific examples from your experience.",
             "structured_feedback": structured_feedback
         }
+
+
+def get_answers_status(interview_session) -> bool:
+    """ Determine whether all answers have been submitted """
+    # Check tech questions completion
+    tech_answered = len([answer for answer in (interview_session.tech_answers or [])
+                         if answer and answer.strip()])
+    tech_total = len(interview_session.tech_questions or [])
+    tech_completed = tech_answered == tech_total if tech_total > 0 else True
+
+    # Check interview questions completion
+    interview_answered = len([answer for answer in (interview_session.answers or [])
+                              if answer and answer.strip()])
+    interview_total = len(interview_session.questions or [])
+    interview_completed = interview_answered == interview_total if interview_total > 0 else True
+
+    # Update completion status
+    interview_session.is_completed = tech_completed and interview_completed
+    interview_session.save()
+    return interview_session.is_completed
