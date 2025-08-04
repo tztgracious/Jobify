@@ -107,6 +107,15 @@
     <string name="app_name_jobify">Jobify</string>
     <string name="welcome_title">Welcome to Jobify</string>
     <string name="welcome_subtitle">AI-powered job assistant to help you find your ideal job</string>
+    
+    <!-- Jobify Brand Strings -->
+    <string name="jobify_brand_title">Jobify</string>
+    <string name="jobify_tagline">AI-Powered Interview Coach</string>
+    <string name="feature_ai_resume">AI Resume Analysis</string>
+    <string name="feature_success_rate">95% Success Rate</string>
+    <string name="feature_ai_support">24/7 AI Support</string>
+    <string name="feature_multi_agent">Multi-Agent Coach System</string>
+    <string name="feature_anime_interview">Anime Interview Sessions</string>
     <string name="feature_resume_analysis">Smart Resume Analysis</string>
     <string name="feature_interview_prep">Personalized Interview Prep</string>
     <string name="feature_ai_chat">AI Chat Assistant</string>

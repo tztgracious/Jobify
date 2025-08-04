@@ -280,7 +280,6 @@ class ChatActivityViewModel : ViewModel() {
         if (!response?.errorMsg.isNullOrEmpty()) {
             return ChatDialogContentUIState(isFromMe = false, errorMsg = response?.errorMsg)
         }
-
         return ChatDialogContentUIState(
             isFromMe = false,
             chatContent = response?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
