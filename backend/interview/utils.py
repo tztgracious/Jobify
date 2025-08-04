@@ -1,27 +1,19 @@
 import json
 import os
-import json
 import re
-import requests
-from typing import List, Dict, Any
-from dataclasses import dataclass
-from enum import Enum
-import asyncio
-import aiohttp
 from concurrent.futures import ThreadPoolExecutor
-import random
+from typing import List, Dict, Any
+
 import requests
-from deepgram import DeepgramClient, PrerecordedOptions
-from django.conf import settings
-from interview.models import InterviewSession
+from requests import session
+
+from .models.interview_session import InterviewSession
+from interview.multi_agent import BaseAgent, InterviewerRole
 from jobify_backend.logger import logger
-from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
-from rest_framework.response import Response
 
-
-def get_questions_using_openai(session):
-    target_job = session.target_job
-    keywords = session.keywords
+def get_questions_using_openai(interview_session):
+    target_job = interview_session.target_job
+    keywords = interview_session.keywords
 
     prompt = f"""
     You are a professional career coach helping job seekers prepare for interviews.
@@ -57,10 +49,10 @@ def get_questions_using_openai(session):
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
         questions = json.loads(response_text)
-        session.questions = questions["interview_question"]
-        session.tech_questions = questions["tech_question"]
-        session.question_status = InterviewSession.Status.COMPLETE
-        session.save()
+        interview_session.questions = questions["interview_question"]
+        interview_session.tech_questions = questions["tech_question"]
+        interview_session.question_status = InterviewSession.Status.COMPLETE
+        interview_session.save()
     except json.JSONDecodeError:
         print(f"Error parsing questions: {response_text}")
 
@@ -134,246 +126,101 @@ def get_feedback_using_openai_text(interview_session):
         return []
     return feedbacks
 
-def clean_json_response(response_text):
-    """Clean markdown formatting from JSON responses"""
-    
-    # Remove leading/trailing whitespace
-    cleaned = response_text.strip()
-    
-    # Method 1: Remove markdown code blocks
-    if cleaned.startswith("```json"):
-        # Remove opening ```json
-        cleaned = cleaned[7:]
-        # Remove closing ```
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-    elif cleaned.startswith("```"):
-        # Remove generic code blocks
-        cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-    
-    # Method 2: Extract JSON using regex (more robust)
-    # This finds the first { and last } to extract just the JSON object
-    json_match = re.search(r'\{[^{}]*\{.*\}[^{}]*\}|\{[^{}]*\}', cleaned, re.DOTALL)
-    if json_match:
-        cleaned = json_match.group()
-    
-    return cleaned
 
-class InterviewerRole(Enum):
-    HR_RECRUITER = "HR Recruiter"
-    TECHNICAL_LEAD = "Technical Lead"
-    HIRING_MANAGER = "Hiring Manager"
-    INDUSTRY_EXPERT = "Industry Expert"
-    SENIOR_PEER = "Senior Peer"
-
-
-class BaseAgent:
-    """Base class for all interview agents"""
-    
-    def __init__(self, role: InterviewerRole, api_key: str):
-        self.role = role
-        self.api_key = api_key
-        self.personality = self._define_personality()
-    
-    def _define_personality(self) -> str:
-        """Define the personality and focus for each agent type"""
-        personalities = {
-            InterviewerRole.HR_RECRUITER: """You are an experienced HR recruiter who focuses on:
-                - Cultural fit and company values alignment
-                - Communication skills and interpersonal abilities
-                - Career motivation and growth mindset
-                - Conflict resolution and teamwork
-                - Work-life balance and expectations""",
-            
-            InterviewerRole.TECHNICAL_LEAD: """You are a senior technical lead who evaluates:
-                - Technical proficiency and coding skills
-                - System design and architecture understanding
-                - Problem-solving approach and analytical thinking
-                - Knowledge of best practices and design patterns
-                - Ability to explain complex technical concepts""",
-            
-            InterviewerRole.HIRING_MANAGER: """You are a hiring manager who assesses:
-                - Practical experience and project management
-                - Business acumen and strategic thinking
-                - Leadership potential and initiative
-                - Ability to deliver results and meet deadlines
-                - Cross-functional collaboration skills""",
-            
-            InterviewerRole.INDUSTRY_EXPERT: """You are an industry expert who examines:
-                - Current industry trends and technologies
-                - Competitive landscape knowledge
-                - Innovation and adaptability
-                - Domain-specific expertise
-                - Understanding of market challenges""",
-            
-            InterviewerRole.SENIOR_PEER: """You are a senior peer who explores:
-                - Technical collaboration and mentoring abilities
-                - Code review and feedback skills
-                - Team dynamics and communication
-                - Knowledge sharing and documentation
-                - Day-to-day work scenarios"""
-        }
-        return personalities.get(self.role, "You are a professional interviewer.")
-    
-    def generate_question_sync(self, target_job: str, keywords: List[str]) -> Dict[str, Any]:
-        """Synchronous version of question generation"""
-        prompt = f"""{self.personality}
-        
-        You're interviewing for: {target_job}
-        Key skills/keywords: {', '.join(keywords)}
-        
-        Generate ONE realistic interview question that you would ask in a real interview.
-        The question should be specific to your role as {self.role.value} and your focus areas.
-        
-        Return ONLY a valid JSON object with this structure:
-        {{
-            "question": "Your question here",
-            "focus_area": "The main skill or area this question assesses",
-            "difficulty": 3
-        }}
-        
-        Difficulty scale: 1 (basic) to 5 (very challenging)
-        Make the question practical and scenario-based when possible.
-        Do not include any explanation or markdown, just the JSON.
-        """
-        
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "openai/gpt-4o",
-                    "messages": [{"role": "user", "content": prompt}]
-                }
-            )
-            
-            response_text = response.json()["choices"][0]["message"]["content"]
-            # Clean and parse the response
-            cleaned_text = clean_json_response(response_text)
-            question_data = json.loads(cleaned_text)
-            
-            return {
-                "question": question_data["question"],
-                "interviewer_role": self.role.value,
-                "focus_area": question_data.get("focus_area", "General"),
-                "difficulty": question_data.get("difficulty", 3)
-            }
-        except Exception as e:
-            print(f"Error generating question for {self.role.value}: {e}")
-            print(response_text)
-            return {
-                "question": f"Tell me about your experience with {keywords[0] if keywords else 'this role'}.",
-                "interviewer_role": self.role.value,
-                "focus_area": "General Experience",
-                "difficulty": 2
-            }
-    
-    def evaluate_answer_sync(self, question: str, answer: str, target_job: str, keywords: List[str]) -> Dict[str, Any]:
-        """Synchronous version of answer evaluation"""
-        prompt = f"""{self.personality}
-        
-        Job: {target_job}
-        Required skills: {', '.join(keywords)}
-        
-        Question asked: "{question}"
-        Candidate's answer: "{answer}"
-        
-        Evaluate this answer from your specific perspective as a {self.role.value}.
-        
-        Return ONLY a valid JSON object:
-        {{
-            "score": 7,
-            "strengths": ["strength1", "strength2"],
-            "weaknesses": ["weakness1", "weakness2"],
-            "specific_feedback": "Detailed feedback from your role's perspective",
-            "improvement_tips": ["tip1", "tip2"]
-        }}
-        
-        Score should be out of 10. Do not include any explanation or markdown, just the JSON.
-        """
-        
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "openai/gpt-4o",
-                    "messages": [{"role": "user", "content": prompt}],
-                        
-                }
-            )
-            response_text = response.json()["choices"][0]["message"]["content"]
-            cleaned_text = clean_json_response(response_text)
-            return json.loads(cleaned_text)
-        except Exception as e:
-            print(f"Error evaluating answer for {self.role.value}: {e}")
-            print(response_text)
-            return {
-                "score": 5,
-                "strengths": ["Attempted to answer"],
-                "weaknesses": ["Could not evaluate properly"],
-                "specific_feedback": "Error in evaluation",
-                "improvement_tips": ["Try to provide more specific examples"]
-            }
-
-
-def get_questions_using_openai_multi_agent(target_job, keywords):
+def get_questions_using_openai_multi_agent(interview_session):
     """Multi-agent version that maintains the same interface as the original function"""
     api_key = os.getenv('OPEN_ROUTER_API_KEY')
+    target_job = interview_session.target_job
+    keywords = interview_session.keywords
     
-    # Select which agents to use based on the job type
+    # Create one technical agent for tech question
+    tech_agent = BaseAgent(InterviewerRole.TECHNICAL_LEAD, api_key)
+    
+    # Select 3 agents for interview questions based on job type
     selected_roles = _select_agent_roles_for_job(target_job, num_agents=3)
-    
-    # Create agents
-    agents = [BaseAgent(role, api_key) for role in selected_roles]
-    
-    # Generate questions from each agent
-    questions_data = []
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = [
-            executor.submit(agent.generate_question_sync, target_job, keywords)
-            for agent in agents
-        ]
+    interview_agents = [BaseAgent(role, api_key) for role in selected_roles]
+
+    # Generate tech question and interview questions concurrently
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit tech question generation
+        tech_future = executor.submit(_generate_tech_question, tech_agent, target_job, keywords)
         
-        for future in futures:
+        # Submit interview questions generation
+        interview_futures = [
+            executor.submit(agent.generate_question_sync, target_job, keywords)
+            for agent in interview_agents
+        ]
+
+        # Get tech question result
+        tech_question_data = tech_future.result()
+        tech_questions = [tech_question_data["question"]]
+        
+        # Get interview questions results
+        questions_data = []
+        for future in interview_futures:
             question_data = future.result()
             questions_data.append(question_data)
-    
-    # Sort by difficulty for better flow
+
+    # Sort interview questions by difficulty for better flow
     questions_data.sort(key=lambda q: q.get("difficulty", 3))
+    interview_questions = [q["question"] for q in questions_data]
     
-    # Return just the question texts to maintain compatibility
-    return [q["question"] for q in questions_data]
+    # Save results to the database (same as original function)
+    try:
+        interview_session.questions = interview_questions
+        interview_session.tech_questions = tech_questions
+        interview_session.question_status = InterviewSession.Status.COMPLETE
+        logger.info(f"Generated MA questions: {interview_questions} | Tech Questions: {tech_questions}")
+        interview_session.save()
+    except Exception as e:
+        print(f"Error saving multi-agent questions: {e}")
+        interview_session.question_status = InterviewSession.Status.FAILED
+        interview_session.save()
 
 
-def get_feedback_using_openai_multi_agent(resume, interview_session):
+def get_feedback_using_openai_multi_agent(interview_session):
     """Multi-agent version that maintains the same interface as the original function"""
     api_key = os.getenv('OPEN_ROUTER_API_KEY')
     
     questions = interview_session.questions
     answers = interview_session.answers
-    target_job = resume.target_job
-    keywords = resume.keywords
+    tech_questions = interview_session.tech_questions or []
+    tech_answers = interview_session.tech_answers or []
+    target_job = interview_session.target_job
+    keywords = interview_session.keywords
+
+    # Combine tech and interview questions/answers with tech at the head
+    all_questions = []
+    all_answers = []
     
-    # Get feedback from multiple agents
-    all_feedback = []
+    # Add tech question/answer at the head if they exist
+    if tech_questions and tech_answers and len(tech_questions) > 0 and len(tech_answers) > 0:
+        all_questions.append(tech_questions[0])
+        all_answers.append(tech_answers[0])
     
+    # Add interview questions/answers
+    all_questions.extend(questions)
+    all_answers.extend(answers)
+
+    # Get feedback from multiple agents for all questions
+    all_feedbacks = []
+    logger.debug(f"Starting multi-agent feedback for {len(all_questions)} questions")
+
     # For each question, get feedback from 2-3 different agents
-    for i, (question, answer) in enumerate(zip(questions, answers)):
+    for i, (question, answer) in enumerate(zip(all_questions, all_answers)):
+        if not answer.strip():  # Skip empty answers
+            all_feedbacks.append([])
+            continue
+            
         # Select different agents for each question to get diverse perspectives
-        reviewing_roles = _select_reviewing_roles(i)
+        # For tech questions (index 0), use more technical agents
+        if i == 0 and tech_questions:  # First question is tech question
+            reviewing_roles = [InterviewerRole.TECHNICAL_LEAD, InterviewerRole.SENIOR_PEER, InterviewerRole.INDUSTRY_EXPERT]
+        else:
+            reviewing_roles = _select_reviewing_roles(i)
+            
         agents = [BaseAgent(role, api_key) for role in reviewing_roles]
-        
+
         # Collect feedback from each agent
         question_feedback = []
         with ThreadPoolExecutor(max_workers=len(agents)) as executor:
@@ -381,32 +228,172 @@ def get_feedback_using_openai_multi_agent(resume, interview_session):
                 executor.submit(agent.evaluate_answer_sync, question, answer, target_job, keywords)
                 for agent in agents
             ]
-            
+
             for future in futures:
                 feedback = future.result()
                 question_feedback.append(feedback)
-        
-        all_feedback.append(question_feedback)
-    
+
+        all_feedbacks.append(question_feedback)
+
     # Synthesize feedback from all agents
-    synthesized_feedback = _synthesize_feedback(questions, answers, all_feedback, target_job, keywords, api_key)
-    
+    synthesized_feedback = _synthesize_feedback(all_questions, all_answers, all_feedbacks, target_job, keywords, api_key)
+
     # Format to match expected output
-    formatted_feedback = {
-        "question_1_feedback": synthesized_feedback["question_feedback"][0],
-        "question_2_feedback": synthesized_feedback["question_feedback"][1],
-        "question_3_feedback": synthesized_feedback["question_feedback"][2],
-        "summary": synthesized_feedback["summary"],
-        
-    }
+    feedback_questions = synthesized_feedback["question_feedback"]
     
+    # Determine if we have tech feedback at the head
+    has_tech = tech_questions and tech_answers and len(tech_questions) > 0 and len(tech_answers) > 0
+    
+    formatted_feedback = {
+        "tech_question_feedback": feedback_questions[0] if has_tech and len(feedback_questions) > 0 else "",
+        "question_1_feedback": feedback_questions[1] if has_tech and len(feedback_questions) > 1 else (feedback_questions[0] if len(feedback_questions) > 0 else ""),
+        "question_2_feedback": feedback_questions[2] if has_tech and len(feedback_questions) > 2 else (feedback_questions[1] if len(feedback_questions) > 1 else ""),
+        "question_3_feedback": feedback_questions[3] if has_tech and len(feedback_questions) > 3 else (feedback_questions[2] if len(feedback_questions) > 2 else ""),
+        "summary": synthesized_feedback["summary"],
+    }
+
     return formatted_feedback
+
+
+def process_text_answer(session_id: str, question_index: int, question_text: str, answer: str, interview_session) -> Dict[str, Any]:
+    """
+    Process and save a text answer for an interview question.
+    
+    Args:
+        session_id: The interview session ID
+        question_index: Index of the question being answered (0-based)
+        question_text: The actual question text for validation
+        answer: The user's text answer
+        interview_session: The InterviewSession model instance
+    
+    Returns:
+        Dict with success/error information and status code
+    """
+    try:
+        # Validate that the question text matches
+        if question_index >= len(interview_session.questions):
+            logger.warning(f"Invalid question_index {question_index} for session {session_id}")
+            return {
+                "error": f"question_index must be between 0 and {len(interview_session.questions) - 1}",
+                "status": 400
+            }
+        
+        if interview_session.questions[question_index] != question_text:
+            logger.warning(f"Question mismatch at index {question_index} for session {session_id}")
+            return {
+                "error": "Question text does not match the question at the specified index",
+                "status": 400
+            }
+        
+        # Ensure answers list is properly sized
+        answers = interview_session.answers or []
+        while len(answers) <= question_index:
+            answers.append("")
+        
+        # Update the answer at the specified index
+        answers[question_index] = answer
+        interview_session.answers = answers
+        interview_session.save()
+        
+        # Calculate progress
+        answered_questions = sum(1 for ans in answers if ans.strip())
+        total_questions = len(interview_session.questions)
+        progress = round((answered_questions / total_questions) * 100, 2) if total_questions > 0 else 0
+        is_completed = answered_questions == total_questions
+        
+        logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with text answer")
+        
+        return {
+            "id": session_id,
+            "message": f"Text answer submitted for question {question_index + 1}",
+            "question": question_text,
+            "answer_type": "text",
+            "answer": answer,
+            "progress": progress,
+            "is_completed": is_completed,
+            "status": 200
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing text answer for session {session_id}: {str(e)}")
+        return {
+            "error": "Failed to save text answer",
+            "status": 500
+        }
+
+
+def _generate_tech_question(tech_agent: BaseAgent, target_job: str, keywords: List[str]) -> Dict[str, Any]:
+    """Generate a technical question using the technical agent"""
+    tech_prompt = f"""{tech_agent.personality}
+    
+    You're interviewing for: {target_job}
+    Key technical skills/keywords: {', '.join(keywords)}
+    
+    Generate ONE technical question that evaluates hands-on skills or conceptual understanding.
+    The question should focus on practical implementation, problem-solving, or technical concepts
+    relevant to this role.
+    
+    Return ONLY a valid JSON object with this structure:
+    {{
+        "question": "Your technical question here",
+        "focus_area": "The technical area this question assesses",
+        "difficulty": 4
+    }}
+    
+    Difficulty scale: 1 (basic) to 5 (very challenging)
+    Make the question specific and technical, not just theoretical.
+    Do not include any explanation or markdown, just the JSON.
+    """
+    
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {tech_agent.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "openai/gpt-4o",
+                "messages": [{"role": "user", "content": tech_prompt}]
+            }
+        )
+        
+        response_text = response.json()["choices"][0]["message"]["content"]
+        # Clean and parse the response (assuming clean_json_response is available)
+        try:
+            # Try to parse directly first
+            question_data = json.loads(response_text.strip())
+        except json.JSONDecodeError:
+            # If direct parsing fails, try to extract JSON from the response
+            import re
+            json_match = re.search(r'\{[^{}]*\{.*\}[^{}]*\}|\{[^{}]*\}', response_text, re.DOTALL)
+            if json_match:
+                question_data = json.loads(json_match.group())
+            else:
+                raise json.JSONDecodeError("Could not extract JSON from response", response_text, 0)
+        
+        return {
+            "question": question_data["question"],
+            "interviewer_role": tech_agent.role.value,
+            "focus_area": question_data.get("focus_area", "Technical"),
+            "difficulty": question_data.get("difficulty", 4)
+        }
+    except Exception as e:
+        print(f"Error generating tech question: {e}")
+        # Fallback technical question
+        tech_keyword = keywords[0] if keywords else "your technical skills"
+        return {
+            "question": f"Can you walk me through how you would approach solving a complex problem using {tech_keyword}? Please provide a specific example.",
+            "interviewer_role": tech_agent.role.value,
+            "focus_area": "Technical Problem Solving",
+            "difficulty": 3
+        }
 
 
 def _select_agent_roles_for_job(target_job: str, num_agents: int) -> List[InterviewerRole]:
     """Select appropriate agent roles based on the job type"""
     job_lower = target_job.lower()
-    
+
     # Prioritize agents based on job type
     if any(tech in job_lower for tech in ['engineer', 'developer', 'programmer', 'architect', 'technical']):
         priority_order = [
@@ -441,44 +428,44 @@ def _select_agent_roles_for_job(target_job: str, num_agents: int) -> List[Interv
             InterviewerRole.INDUSTRY_EXPERT,
             InterviewerRole.TECHNICAL_LEAD
         ]
-    
+
     return priority_order[:num_agents]
 
 
 def _select_reviewing_roles(question_index: int) -> List[InterviewerRole]:
     """Select 2-3 agent roles to review each answer for diverse perspectives"""
     all_roles = list(InterviewerRole)
-    
+
     # Rotate through roles to ensure variety
     # Use question index to deterministically select different reviewers
     start_idx = (question_index * 2) % len(all_roles)
-    
+
     reviewing_roles = []
     num_reviewers = 2 if question_index < 2 else 3  # More reviewers for later questions
-    
+
     for i in range(num_reviewers):
         idx = (start_idx + i) % len(all_roles)
         reviewing_roles.append(all_roles[idx])
-    
+
     return reviewing_roles
 
 
-def _synthesize_feedback(questions: List[str], answers: List[str], 
-                        all_feedback: List[List[Dict]], target_job: str, 
-                        keywords: List[str], api_key: str) -> Dict[str, Any]:
+def _synthesize_feedback(questions: List[str], answers: List[str],
+                         all_feedback: List[List[Dict]], target_job: str,
+                         keywords: List[str], api_key: str) -> Dict[str, Any]:
     """Synthesize feedback from multiple agents into cohesive feedback"""
-    
+
     # Prepare structured feedback data
     structured_feedback = []
     for i, (question, answer) in enumerate(zip(questions, answers)):
         question_feedbacks = all_feedback[i]
-        
+
         # Calculate average score and compile feedback
         avg_score = sum(f.get("score", 5) for f in question_feedbacks) / len(question_feedbacks)
         all_strengths = [s for f in question_feedbacks for s in f.get("strengths", [])]
         all_weaknesses = [w for f in question_feedbacks for w in f.get("weaknesses", [])]
         all_tips = [t for f in question_feedbacks for t in f.get("improvement_tips", [])]
-        
+
         structured_feedback.append({
             "question": question,
             "answer": answer,
@@ -487,7 +474,7 @@ def _synthesize_feedback(questions: List[str], answers: List[str],
             "weaknesses": list(set(all_weaknesses))[:3],  # Top 3 unique weaknesses
             "tips": list(set(all_tips))[:3]  # Top 3 unique tips
         })
-    
+
     # Use AI to synthesize into final feedback
     synthesis_prompt = f"""You are a senior interview coach synthesizing feedback from multiple interviewers.
     
@@ -511,7 +498,7 @@ def _synthesize_feedback(questions: List[str], answers: List[str],
     
     Make the feedback specific, balanced, and actionable. Do not include JSON formatting or markdown.
     """
-    
+
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -524,12 +511,12 @@ def _synthesize_feedback(questions: List[str], answers: List[str],
                 "messages": [{"role": "user", "content": synthesis_prompt}]
             }
         )
-        
+
         response_text = response.json()["choices"][0]["message"]["content"]
         synthesized = json.loads(response_text)
-        
+
         return synthesized
-        
+
     except Exception as e:
         print(f"Error synthesizing feedback: {e}")
         # Fallback to simple concatenation
@@ -541,7 +528,28 @@ def _synthesize_feedback(questions: List[str], answers: List[str],
                 for q in structured_feedback
             ],
             "summary": f"Overall performance shows potential for the {target_job} role. "
-                      f"Focus on demonstrating stronger expertise in {', '.join(keywords[:3])}. "
-                      f"Practice providing specific examples from your experience.",
-            "structured_feedback":structured_feedback
+                       f"Focus on demonstrating stronger expertise in {', '.join(keywords[:3])}. "
+                       f"Practice providing specific examples from your experience.",
+            "structured_feedback": structured_feedback
         }
+
+
+def get_answers_status(interview_session) -> bool:
+    """ Determine whether all answers have been submitted """
+    # Check tech questions completion
+    tech_answered = len([answer for answer in (interview_session.tech_answers or [])
+                         if answer and answer.strip()])
+    tech_total = len(interview_session.tech_questions or [])
+    tech_completed = tech_answered == tech_total if tech_total > 0 else True
+
+    # Check interview questions completion
+    interview_answered = len([answer for answer in (interview_session.answers or [])
+                              if answer and answer.strip()])
+    interview_total = len(interview_session.questions or [])
+    interview_completed = interview_answered == interview_total if interview_total > 0 else True
+    video_completed = interview_session.videos.count() == 3
+    # Update completion status
+    interview_session.is_completed = (tech_completed and interview_completed) or (tech_completed and video_completed)
+    logger.info(f"Interview session {interview_session.id} completion status updated: {interview_session.is_completed}")
+    interview_session.save()
+    return interview_session.is_completed

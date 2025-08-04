@@ -24,6 +24,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import android.content.ContentValues
+import android.provider.MediaStore
 
 class VideoAnswerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityVideoAnswerBinding
@@ -127,9 +129,7 @@ class VideoAnswerActivity : AppCompatActivity() {
                 override fun onVideoSaved(outputFileResults: VideoCapture.OutputFileResults) {
                     outputUri = outputFileResults.savedUri ?: Uri.fromFile(videoFile)
                     runOnUiThread {
-                        Toast.makeText(this@VideoAnswerActivity, "Recording completed", Toast.LENGTH_SHORT).show()
-                        // Auto upload after recording
-                        uploadVideo()
+                        saveVideoToGallery(outputFile ?: return@runOnUiThread)
                     }
                 }
                 override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
@@ -143,6 +143,37 @@ class VideoAnswerActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    // 新增：保存视频到相册
+    private fun saveVideoToGallery(file: File) {
+        val resolver = applicationContext.contentResolver
+        val videoCollection = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        }
+        val newVideo = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/ChatWaifu")
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        }
+        val videoUri = resolver.insert(videoCollection, newVideo)
+        videoUri?.let { uri ->
+            resolver.openOutputStream(uri)?.use { outputStream ->
+                file.inputStream().use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            newVideo.clear()
+            newVideo.put(MediaStore.Video.Media.IS_PENDING, 0)
+            resolver.update(uri, newVideo, null, null)
+            runOnUiThread {
+                Toast.makeText(this, "Video saved to gallery!", Toast.LENGTH_SHORT).show()
+                finishWithResult(true)
+            }
+        }
     }
 
     private fun stopRecording() {

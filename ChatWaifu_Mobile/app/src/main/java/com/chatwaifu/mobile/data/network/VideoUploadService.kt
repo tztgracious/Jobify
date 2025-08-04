@@ -8,6 +8,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import com.chatwaifu.mobile.data.network.SubmitInterviewAnswerRequest
 
 class VideoUploadService(private val context: Context) {
     
@@ -48,13 +49,12 @@ class VideoUploadService(private val context: Context) {
             
             Log.d(TAG, "发送API请求 - 文件大小: ${videoFile.length()} bytes")
             
-            val response = apiService.submitInterviewAnswer(
+            val response = apiService.submitInterviewAnswerVideo(
                 id = idBody,
                 index = indexBody,
                 answerType = answerTypeBody,
                 question = questionBody,
-                video = videoPart,
-                textAnswer = null
+                video = videoPart
             )
             
             if (response.isSuccessful) {
@@ -97,21 +97,16 @@ class VideoUploadService(private val context: Context) {
         try {
             Log.d(TAG, "开始上传文本答案 - ID: $id, 问题索引: $questionIndex")
             
-            // 按照API文档格式创建请求参数
-            val idBody = id.toRequestBody("text/plain".toMediaTypeOrNull())
-            val indexBody = questionIndex.toString().toRequestBody("text/plain".toMediaTypeOrNull())
-            val answerTypeBody = "text".toRequestBody("text/plain".toMediaTypeOrNull())
-            val questionBody = question.toRequestBody("text/plain".toMediaTypeOrNull())
-            val answerBody = textAnswer.toRequestBody("text/plain".toMediaTypeOrNull())
-            
-            val response = apiService.submitInterviewAnswer(
-                id = idBody,
-                index = indexBody,
-                answerType = answerTypeBody,
-                question = questionBody,
-                video = null,
-                textAnswer = answerBody
+            // 使用JSON格式提交文本答案
+            val request = SubmitInterviewAnswerRequest(
+                id = id,
+                index = questionIndex,
+                answer_type = "text",
+                question = question,
+                answer = textAnswer
             )
+            
+            val response = apiService.submitInterviewAnswerText(request)
             
             if (response.isSuccessful) {
                 val result = response.body()

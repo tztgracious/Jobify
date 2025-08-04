@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:gravity="center_vertical"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- 问题类型图标 -->
+    <ImageView
+        android:id="@+id/ivIssueIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/ic_warning"
+        android:tint="@color/warning_orange"
+        tools:src="@drawable/ic_warning"/>
+
+    <!-- 问题内容 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvIssueTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Missing contact information"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"
+            tools:text="Missing contact information"/>
+
+        <TextView
+            android:id="@+id/tvIssueDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Your resume should include a phone number and email address for potential employers to contact you."
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:lineSpacingExtra="2dp"
+            tools:text="Your resume should include a phone number and email address for potential employers to contact you."/>
+
+    </LinearLayout>
+
+</LinearLayout> 

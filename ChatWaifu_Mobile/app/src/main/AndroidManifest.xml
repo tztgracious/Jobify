@@ -34,6 +34,9 @@
             android:name=".ui.resume.UploadResumeActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.resume.ResumeIssuesActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.questions.InterviewQuestionsActivity"
             android:exported="false" />
         <activity
@@ -53,12 +56,19 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.answertype.AnswerTypeSelectActivity" />
-        <activity
             android:name=".ui.solution.SolutionActivity"
             android:exported="false" />
         <activity
             android:name=".ui.techinterview.TechInterviewActivity" />
+        <activity
+            android:name=".ui.techinterview.TechSolutionActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.tips.TipsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.updatedb.UpdateDatabaseActivity"
+            android:exported="false" />
         <activity
             android:name=".ChatActivity"
             android:exported="true"

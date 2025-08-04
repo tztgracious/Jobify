@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from interview.models import InterviewSession
+from interview.interview_session import InterviewSession
 from rest_framework import status
 from rest_framework.test import APITestCase
 

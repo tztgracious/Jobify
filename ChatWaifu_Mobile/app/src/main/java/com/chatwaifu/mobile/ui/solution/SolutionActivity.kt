@@ -1,52 +1,147 @@
 package com.chatwaifu.mobile.ui.solution
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import android.util.Log
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.chatwaifu.mobile.databinding.ActivitySolutionBinding
+import com.chatwaifu.mobile.data.network.JobifyApiService
+import com.chatwaifu.mobile.data.network.FeedbackRequest
+import com.chatwaifu.mobile.data.network.FeedbackResponse
+import kotlinx.coroutines.launch
 
-class SolutionActivity : ComponentActivity() {
+class SolutionActivity : AppCompatActivity() {
+    private lateinit var binding: ActivitySolutionBinding
+    private val apiService = JobifyApiService.create()
+    private val TAG = "SolutionActivity"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = ActivitySolutionBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // 从intent获取传递的数据
         val questions = intent.getStringArrayListExtra("questions") ?: arrayListOf()
         val answers = intent.getStringArrayListExtra("answers") ?: arrayListOf()
         val solutions = intent.getStringArrayListExtra("solutions") ?: arrayListOf()
-        setContent {
-            SolutionScreen(
-                questions = questions,
-                answers = answers,
-                solutions = solutions
-            )
+        val docId = intent.getStringExtra("doc_id")
+
+        // 填充UI
+        if (questions.size >= 1) {
+            binding.tvQuestion1.text = "Question 1: ${questions.getOrNull(0) ?: ""}"
+            binding.tvYourAnswer1.text = "Your Answer: ${answers.getOrNull(0) ?: ""}"
+            binding.tvStandardAnswer1.text = "Solution: ${solutions.getOrNull(0) ?: ""}"
+        }
+        
+        if (questions.size >= 2) {
+            binding.tvQuestion2.text = "Question 2: ${questions.getOrNull(1) ?: ""}"
+            binding.tvYourAnswer2.text = "Your Answer: ${answers.getOrNull(1) ?: ""}"
+            binding.tvStandardAnswer2.text = "Solution: ${solutions.getOrNull(1) ?: ""}"
+        }
+        
+        if (questions.size >= 3) {
+            binding.tvQuestion3.text = "Question 3: ${questions.getOrNull(2) ?: ""}"
+            binding.tvYourAnswer3.text = "Your Answer: ${answers.getOrNull(2) ?: ""}"
+            binding.tvStandardAnswer3.text = "Solution: ${solutions.getOrNull(2) ?: ""}"
+        }
+
+        // 加载反馈
+        docId?.let { id ->
+            loadFeedback(id)
+        }
+
+        binding.btnBack.setOnClickListener { finish() }
+        binding.btnNext.setOnClickListener {
+            // 直接返回欢迎页面
+            val intent = android.content.Intent(this, com.chatwaifu.mobile.ui.welcome.WelcomeActivity::class.java)
+            intent.flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+            finish()
         }
     }
-}
+    
+    private fun loadFeedback(docId: String) {
+        Log.d(TAG, "Loading feedback for doc_id: $docId")
+        
+        // 显示加载状态
+        showLoadingState(true)
+        
+        lifecycleScope.launch {
+            try {
+                val request = FeedbackRequest(id = docId, answer_type = "text")
+                val response = apiService.getFeedback(request)
+                
+                if (response.isSuccessful) {
+                    val feedbackData = response.body()
+                    Log.d(TAG, "Feedback response: $feedbackData")
+                    
+                    if (feedbackData != null && feedbackData.feedbacks.isNotEmpty()) {
+                        updateUIWithFeedback(feedbackData.feedbacks)
+                    } else {
+                        Log.w(TAG, "Empty feedback received")
+                        showFeedbackError("No feedback available yet. Please try again later.")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Failed to load feedback: ${response.code()}, error: $errorBody")
+                    showFeedbackError("Failed to load feedback: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading feedback", e)
+                showFeedbackError("Network error: ${e.message}")
+            } finally {
+                // 隐藏加载状态
+                showLoadingState(false)
+            }
+        }
+    }
+    
+    private fun updateUIWithFeedback(feedbacks: Map<String, String>) {
+        Log.d(TAG, "Updating UI with feedback: $feedbacks")
+        
+        // 更新每个问题的反馈
+        feedbacks["question_1_feedback"]?.let { feedback ->
+            binding.tvFeedback1?.text = "Feedback: $feedback"
+            binding.tvFeedback1?.visibility = android.view.View.VISIBLE
+        }
+        
+        feedbacks["question_2_feedback"]?.let { feedback ->
+            binding.tvFeedback2?.text = "Feedback: $feedback"
+            binding.tvFeedback2?.visibility = android.view.View.VISIBLE
+        }
+        
+        feedbacks["question_3_feedback"]?.let { feedback ->
+            binding.tvFeedback3?.text = "Feedback: $feedback"
+            binding.tvFeedback3?.visibility = android.view.View.VISIBLE
+        }
+        
+        // 更新技术问题反馈
+        feedbacks["tech_question_feedback"]?.let { feedback ->
+            binding.tvTechFeedback?.text = "Tech Feedback: $feedback"
+            binding.tvTechFeedback?.visibility = android.view.View.VISIBLE
+        }
+        
+        // 更新总结
+        feedbacks["summary"]?.let { summary ->
+            binding.tvSummary?.text = summary
+            binding.tvSummary?.visibility = android.view.View.VISIBLE
+            // 显示成功提示
+            Toast.makeText(this, "Interview feedback loaded successfully!", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun showFeedbackError(errorMessage: String) {
+        // 显示错误信息，可以添加一个TextView来显示错误
+        Log.e(TAG, errorMessage)
+        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+        // 这里可以添加UI元素来显示错误信息
+    }
 
-@Composable
-fun SolutionScreen(
-    questions: List<String>,
-    answers: List<String>,
-    solutions: List<String>
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(24.dp)
-    ) {
-        Text("Interview Solutions", fontSize = 24.sp, color = Color.Black)
-        Spacer(modifier = Modifier.height(16.dp))
-        for (i in questions.indices) {
-            Text("Q${i+1}: ${questions[i]}", fontSize = 16.sp, color = Color.DarkGray)
-            Text("Your answer: ${answers.getOrNull(i) ?: ""}", fontSize = 14.sp, color = Color.Gray)
-            Text("Solution: ${solutions.getOrNull(i) ?: ""}", fontSize = 14.sp, color = Color(0xFF1976D2))
-            Spacer(modifier = Modifier.height(16.dp))
+    private fun showLoadingState(show: Boolean) {
+        // 可以在这里添加加载指示器的显示/隐藏逻辑
+        if (show) {
+            Toast.makeText(this, "Loading feedback...", Toast.LENGTH_SHORT).show()
         }
     }
 } 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import InterviewSession
+from .interview_session import InterviewSession
 
 
 class InterviewSessionSerializer(serializers.ModelSerializer):

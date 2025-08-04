@@ -28,28 +28,11 @@ class EnglishTextUtils(
         text: String
     ): List<IntArray> {
         val sentences = splitSentence(text)
-
         val outputs = ArrayList<IntArray>()
-
-        var sentence = ""
         for (i in sentences.indices) {
-            val s = sentences[i]
-            sentence += s.split("\t")[0]
-            if (s.contains("記号,読点") ||
-                s.contains("記号,句点") ||
-                s.contains("記号,一般") ||
-                s.contains("記号,空白") ||
-                i == sentences.size - 1
-            ) {
-                if (sentence.length > 100) {
-                    throw RuntimeException("句子过长")
-                }
-                val labels = wordsToLabels(sentence)
-                if (labels.isEmpty() || labels.sum() == 0)
-                    continue
-                outputs.add(labels)
-                sentence = ""
-            }
+            if (sentences[i].isEmpty()) continue
+            val labels = wordsToLabels(sentences[i])
+            outputs.add(labels)
         }
         return outputs
     }

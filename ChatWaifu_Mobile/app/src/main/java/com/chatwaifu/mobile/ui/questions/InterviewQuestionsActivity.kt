@@ -16,24 +16,27 @@ import android.widget.Toast
 class InterviewQuestionsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityInterviewQuestionsBinding
-    private val questions = listOf(
-        "Please introduce yourself.",
-        "Why are you interested in this position?",
-        "Describe the biggest technical challenge you've faced."
-    )
+    private lateinit var viewModel: InterviewQuestionsViewModel
+    
     private var currentIndex = 0
     private val answers = mutableListOf<String>()
     private var answerTimer: CountDownTimer? = null
+    private var docId: String? = null
+    private var answerType: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityInterviewQuestionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val answerType = intent.getStringExtra("answer_type")
+        // 获取传递的参数
+        docId = intent.getStringExtra("doc_id")
+        answerType = intent.getStringExtra("answer_type")
+        
+        Log.d("InterviewQuestionsActivity", "docId: $docId, answerType: $answerType")
+
         if (answerType == "video") {
             // 跳转到视频回答界面
-            val docId = intent.getStringExtra("doc_id")
             val keywords = intent.getStringArrayExtra("keywords")
             val intent = Intent(this, com.chatwaifu.mobile.ui.questions.VideoAnswerActivity::class.java).apply {
                 putExtra("doc_id", docId)
@@ -44,9 +47,19 @@ class InterviewQuestionsActivity : AppCompatActivity() {
             return
         }
 
+        // 初始化ViewModel
+        viewModel = ViewModelProvider(this)[InterviewQuestionsViewModel::class.java]
+        
         setupUI()
-        showCurrentQuestion()
-        startAnswerTimer()
+        setupObservers()
+        
+        // 加载面试问题
+        docId?.let { id ->
+            viewModel.loadInterviewQuestions(id)
+        } ?: run {
+            showSnackbar("Error: Missing document ID")
+            finish()
+        }
     }
 
     private fun setupUI() {
@@ -55,30 +68,95 @@ class InterviewQuestionsActivity : AppCompatActivity() {
         // 录视频按钮暂不实现
         binding.btnRecordVideo.text = "Record Video (Coming soon)"
         binding.btnRecordVideo.isEnabled = false
+        
+        // 初始状态
+        binding.btnNext.isEnabled = false
+        binding.etAnswer.isEnabled = false
+    }
+    
+    private fun setupObservers() {
+        viewModel.questions.observe(this) { questions ->
+            Log.d("InterviewQuestionsActivity", "Received ${questions.size} questions")
+            if (questions.isNotEmpty()) {
+                showCurrentQuestion(questions)
+                binding.btnNext.isEnabled = true
+                binding.etAnswer.isEnabled = true
+                startAnswerTimer()
+            }
+        }
+        
+        viewModel.isLoading.observe(this) { isLoading ->
+            if (isLoading) {
+                binding.tvCurrentQuestion.text = "Loading questions..."
+                binding.btnNext.isEnabled = false
+                binding.etAnswer.isEnabled = false
+            }
+        }
+        
+        viewModel.error.observe(this) { error ->
+            if (error.isNotEmpty()) {
+                when (error) {
+                    "questions_generating" -> {
+                        showSnackbar("Questions are still being generated. Please wait...")
+                        // 可以在这里实现轮询逻辑
+                    }
+                    "error_load_failed" -> {
+                        showSnackbar("Failed to load questions. Please try again.")
+                    }
+                    "error_network" -> {
+                        showSnackbar("Network error. Please check your connection.")
+                    }
+                    else -> {
+                        showSnackbar("Error: $error")
+                    }
+                }
+            }
+        }
     }
 
-    private fun showCurrentQuestion() {
-        binding.tvCurrentQuestion.text = questions[currentIndex]
-        binding.etAnswer.setText("")
-        binding.tilAnswer.hint = "Please enter your answer for question ${currentIndex + 1}..."
-        if (currentIndex == questions.size - 1) {
-            binding.btnNext.text = "Finish"
-        } else {
-            binding.btnNext.text = "Next"
+    private fun showCurrentQuestion(questions: List<String>) {
+        if (currentIndex < questions.size) {
+            binding.tvCurrentQuestion.text = questions[currentIndex]
+            binding.etAnswer.setText("")
+            binding.tilAnswer.hint = "Please enter your answer for question ${currentIndex + 1}..."
+            if (currentIndex == questions.size - 1) {
+                binding.btnNext.text = "Finish"
+            } else {
+                binding.btnNext.text = "Next"
+            }
         }
     }
 
     private fun onNextClicked() {
         val answer = binding.etAnswer.text?.toString()?.trim() ?: ""
+        if (answer.isEmpty()) {
+            showSnackbar("Please enter your answer before proceeding.")
+            return
+        }
+        
         answers.add(answer)
-        if (currentIndex < questions.size - 1) {
+        
+        // 提交答案到API
+        viewModel.questions.value?.let { questions ->
+            if (currentIndex < questions.size) {
+                val question = questions[currentIndex]
+                docId?.let { id ->
+                    viewModel.submitAnswer(id, currentIndex, question, answer, answerType ?: "text")
+                }
+            }
+        }
+        
+        if (currentIndex < (viewModel.questions.value?.size ?: 0) - 1) {
             currentIndex++
-            showCurrentQuestion()
+            showCurrentQuestion(viewModel.questions.value ?: emptyList())
             startAnswerTimer()
         } else {
-            // 跳转到TipsActivity并传递答案
-            val intent = Intent(this, TipsActivity::class.java)
+            // 所有问题回答完毕，直接跳转到SolutionActivity
+            val intent = Intent(this, com.chatwaifu.mobile.ui.solution.SolutionActivity::class.java)
+            intent.putStringArrayListExtra("questions", ArrayList(viewModel.questions.value ?: emptyList()))
             intent.putStringArrayListExtra("answers", ArrayList(answers))
+            intent.putStringArrayListExtra("solutions", ArrayList(emptyList())) // 标准答案将在SolutionActivity中获取
+            intent.putExtra("doc_id", docId)
             startActivity(intent)
             finish()
         }

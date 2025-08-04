@@ -24,6 +24,7 @@
     <color name="warning_amber">#FFC107</color>
     <color name="warning_amber_dark">#FFA000</color>
     <color name="warning_amber_light">#FFECB3</color>
+    <color name="warning_orange">#FF9800</color>
     
     <color name="error_red">#F44336</color>
     <color name="error_red_dark">#D32F2F</color>
@@ -51,6 +52,8 @@
     <color name="text_hint">#BDBDBD</color>
     <color name="text_primary_dark">#FFFFFF</color>
     <color name="text_secondary_dark">#B3FFFFFF</color>
+    
+    <color name="feedback_color">#FF6B35</color>
     
     <color name="chip_unchecked_color">#E0E0E0</color>
 </resources>

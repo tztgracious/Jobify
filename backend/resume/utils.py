@@ -5,7 +5,7 @@ import re
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from interview.models import InterviewSession
+from interview.models.interview_session import InterviewSession
 from jobify_backend.logger import logger
 from llama_cloud_services import LlamaParse
 

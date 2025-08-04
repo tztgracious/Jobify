@@ -4,7 +4,7 @@ import time
 import uuid
 
 from django.conf import settings
-from interview.models import InterviewSession
+from interview.models.interview_session import InterviewSession
 from interview.utils import get_questions_using_openai
 from jobify_backend.logger import logger
 from rest_framework import status
@@ -181,7 +181,6 @@ def get_grammar_results(request):
         logger.info(
             f"Resume processing complete for id: {session_id}, grammar results count: {len(grammar_results)}"
         )
-        logger.info(f"Grammar results: {grammar_results}")
         logger.info("=== GET GRAMMAR RESULTS REQUEST COMPLETED SUCCESSFULLY ===")
         return Response(
             {"finished": True, "grammar_check": grammar_results, "error": ""},
@@ -342,8 +341,8 @@ def remove_resume(request):
     logger.info("=== REMOVE RESUME REQUEST STARTED ===")
     logger.info(f"Request data: {request.data}")
 
-    id = request.data.get("id")
-    if not id:
+    session_id = request.data.get("id")
+    if not session_id:
         logger.warning("remove_resume called without id")
         logger.info("=== REMOVE RESUME REQUEST FAILED - NO ID ===")
         return Response(
@@ -351,10 +350,10 @@ def remove_resume(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    logger.info(f"Looking up resume for id: {id}")
-    resume = get_session_by_id(id)
+    logger.info(f"Looking up resume for id: {session_id}")
+    resume = get_session_by_id(session_id)
     if not resume:
-        logger.warning(f"Remove resume requested for non-existent id: {id}")
+        logger.warning(f"Remove resume requested for non-existent id: {session_id}")
         logger.info("=== REMOVE RESUME REQUEST FAILED - RESUME NOT FOUND ===")
         return Response(
             {"success": False, "error": "Resume not found"},
@@ -363,15 +362,15 @@ def remove_resume(request):
 
     # Get the file path before deleting the database entry
     file_path = resume.resume_local_path
-    logger.info(f"Resume found: {id}, file_path: {file_path}")
+    logger.info(f"Resume found: {session_id}, file_path: {file_path}")
 
     # Remove the database entry
     try:
         resume.delete()
-        logger.info(f"Resume database entry deleted for id: {id}")
+        logger.info(f"Resume database entry deleted for id: {session_id}")
     except Exception as e:
         logger.error(
-            f"Failed to delete resume database entry for id: {id}, error: {str(e)}"
+            f"Failed to delete resume database entry for id: {session_id}, error: {str(e)}"
         )
         logger.info("=== REMOVE RESUME REQUEST FAILED - DATABASE ERROR ===")
         return Response(
@@ -392,13 +391,13 @@ def remove_resume(request):
     else:
         logger.warning(f"Media file not found or no path specified: {file_path}")
 
-    logger.info(f"Resume removal completed for id: {id}, file_removed: {file_removed}")
+    logger.info(f"Resume removal completed for id: {session_id}, file_removed: {file_removed}")
     logger.info("=== REMOVE RESUME REQUEST COMPLETED SUCCESSFULLY ===")
 
     return Response(
         {
             "success": True,
-            "id": id,
+            "id": session_id,
             "message": "Resume removed successfully",
             "file_removed": file_removed,
         },
@@ -423,15 +422,6 @@ def cleanup_all_resumes(request):
     logger.info(f"Request data: {request.data}")
     logger.info(f"Request IP: {request.META.get('REMOTE_ADDR', 'unknown')}")
     logger.info(f"Request User-Agent: {request.META.get('HTTP_USER_AGENT', 'unknown')}")
-
-    # Security Check 1: Only allow in DEBUG mode (development/testing)
-    # if not settings.DEBUG:
-    #     logger.warning("Cleanup all resumes attempted in production mode - BLOCKED")
-    #     logger.info("=== CLEANUP ALL RESUMES REQUEST BLOCKED - PRODUCTION MODE ===")
-    #     return Response({
-    #         "success": False,
-    #         "error": "This operation is only allowed in development mode"
-    #     }, status=status.HTTP_403_FORBIDDEN)
 
     # Security Check 2: Require confirmation token
     confirmation_token = request.data.get("confirmation_token")

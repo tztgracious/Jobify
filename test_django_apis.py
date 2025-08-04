@@ -16,8 +16,8 @@ from typing import Any, Dict
 import requests
 
 # Configuration
-BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
-# BASE_URL = "http://localhost:8000"  # Uncomment for local testing
+# BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
+BASE_URL = "http://localhost:8000"  # Uncomment for local testing
 # BASE_URL = "http://115.29.170.231"  # Use HTTP if HTTPS has issues
 
 # SSL Configuration for self-signed certificates
@@ -42,11 +42,13 @@ class APITester:
         self.total_tests = 0
         self.passed_tests = 0
         self.failed_tests = 0
+        self.skipped_tests = 0
         self.id = None
         self.save_response_flag = save_response
         self.interview_questions = []  # Store questions for interview tests
         self.tech_questions = []  # Store technical questions for interview tests
         self.failed_test_names = []  # Track names of failed tests
+        self.skipped_test_names = []  # Track names of skipped tests
 
     def print_header(self, test_name: str):
         print(f"\n{Colors.BLUE}{'=' * 50}{Colors.NC}")
@@ -120,6 +122,13 @@ class APITester:
         """Mark a test as failed due to exception"""
         self.failed_tests += 1
         self.failed_test_names.append(f"{test_name} (Exception)")
+
+    def mark_test_skipped(self, test_name: str, reason: str = ""):
+        """Mark a test as skipped"""
+        self.skipped_tests += 1
+        skip_reason = f" ({reason})" if reason else ""
+        self.skipped_test_names.append(f"{test_name}{skip_reason}")
+        print(f"{Colors.YELLOW}⚠️  SKIP: {test_name}{skip_reason}{Colors.NC}")
 
     def save_response(self, endpoint: str, response_data: Dict):
         if not self.save_response_flag:
@@ -297,7 +306,7 @@ startxref
     def test_get_keywords_valid(self):
         """Test get keywords with valid id"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("GET /api/v1/get-keywords/ (valid id)", "No id available")
             return {}
 
         self.print_header("Get Keywords - Valid id")
@@ -415,7 +424,7 @@ startxref
     def test_get_grammar_valid(self):
         """Test get grammar results with valid id"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("GET /api/v1/get-grammar-results/ (valid id)", "No id available")
             return {}
 
         self.print_header("Get Grammar Results - Valid id")
@@ -531,7 +540,7 @@ startxref
     def test_target_job_valid(self):
         """Test target job with valid data"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/target-job/ (valid data)", "No id available")
             return {}
 
         self.print_header("Target Job - Valid")
@@ -579,7 +588,7 @@ startxref
     def test_get_questions_valid(self):
         """Test get interview questions with valid id"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/get-all-questions/ (valid id)", "No id available")
             return {}
 
         self.print_header("Get Interview Questions - Valid")
@@ -670,7 +679,7 @@ startxref
     def test_submit_tech_question_valid(self):
         """Test submitting technical question answers"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/submit-tech-answer/", "No id available")
             return {}
 
         self.print_header("Submit Technical Question Answers - Valid")
@@ -722,7 +731,7 @@ startxref
     def test_submit_interview_answer(self):
         """Test submitting answers to interview questions"""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/submit-interview-answer/", "No id available")
             return {}
 
         self.print_header("Submit Interview Answers - Valid")
@@ -815,25 +824,60 @@ startxref
             return {}
 
     def test_get_feedback(self):
-        """Test getting feedback on submitted answers"""
+        """Test getting feedback on submitted answers, waiting for completion."""
         if not self.id:
-            print(f"{Colors.YELLOW}⚠️  SKIP: No id available{Colors.NC}")
+            self.mark_test_skipped("POST /api/v1/feedback/", "No id available")
             return {}
 
-        self.print_header("Get Feedback - Valid")
+        self.print_header("Get Feedback - Valid (with polling)")
         try:
-            start = time.time()
-            response = requests.post(
-                f"{self.base_url}/api/v1/feedback/",
-                json={"id": self.id, "answer_type": "text"},
-                verify=VERIFY_SSL,
-            )
-            end = time.time()
+            max_retries = 24  # Wait up to 24 * 5 = 120 seconds
+            retry_delay = 5  # 5 seconds
+
+            start_time = time.time()
+
+            for attempt in range(max_retries):
+                print(
+                    f"{Colors.YELLOW}⏳ Requesting feedback... (Attempt {attempt + 1}/{max_retries}){Colors.NC}"
+                )
+                response = requests.post(
+                    f"{self.base_url}/api/v1/feedback/",
+                    json={"id": self.id, "answer_type": "text"},
+                    verify=VERIFY_SSL,
+                )
+                response_data = self.parse_response(response)
+
+                # Check if feedback generation is complete
+                if response.status_code == 200 and response_data.get("completed") is True:
+                    print(f"{Colors.GREEN}✅ Feedback generation complete!{Colors.NC}")
+                    break  # Exit loop on success
+
+                # Check if still processing
+                if response.status_code == 200 and response_data.get("completed") is False:
+                    if attempt < max_retries - 1:
+                        print(
+                            f"{Colors.YELLOW}⏳ Feedback is processing. Waiting {retry_delay} seconds...{Colors.NC}"
+                        )
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(
+                            f"{Colors.RED}❌ Feedback generation timed out after {max_retries} attempts.{Colors.NC}"
+                        )
+                        break
+                else:
+                    # Handle unexpected status or error
+                    print(
+                        f"{Colors.RED}❌ Unexpected response while waiting for feedback (Status: {response.status_code}).{Colors.NC}"
+                    )
+                    break
+
+            end_time = time.time()
+            total_duration = end_time - start_time
             print(
-                f"{Colors.YELLOW}⏱️  Response time: {end - start:.2f} seconds{Colors.NC}"
+                f"{Colors.YELLOW}⏱️  Total feedback retrieval time: {total_duration:.2f} seconds{Colors.NC}"
             )
 
-            response_data = self.parse_response(response)
             self.check_result(
                 200,
                 response.status_code,
@@ -842,40 +886,33 @@ startxref
             )
 
             # Display feedback information
-            if response.status_code == 200 and "feedbacks" in response_data:
+            if response.status_code == 200 and "feedbacks" in response_data and response_data.get("feedbacks"):
                 feedbacks = response_data["feedbacks"]
 
-                # Count individual question feedback
-                question_feedback_count = len(
-                    [k for k in feedbacks.keys() if "feedback" in k and k != "summary"]
-                )
+                # Display tech and interview feedback
+                tech_feedbacks = feedbacks.get("tech_feedbacks", [])
+                interview_feedbacks = feedbacks.get("interview_feedbacks", [])
+
                 print(
-                    f"{Colors.GREEN}✅ Received feedback for {question_feedback_count} questions{Colors.NC}"
+                    f"{Colors.GREEN}✅ Received {len(tech_feedbacks)} tech feedback(s) and {len(interview_feedbacks)} interview feedback(s).{Colors.NC}"
                 )
 
-                # Show summary if available
-                if "summary" in feedbacks:
-                    summary = feedbacks["summary"]
-                    preview = summary[:150] + "..." if len(summary) > 150 else summary
-                    print(f"{Colors.YELLOW}📝 Summary preview: {preview}{Colors.NC}")
+                # Show a preview of the first tech feedback
+                if tech_feedbacks:
+                    preview = tech_feedbacks[0][:150] + "..." if len(tech_feedbacks[0]) > 150 else tech_feedbacks[0]
+                    print(f"{Colors.YELLOW}📝 Tech feedback preview: {preview}{Colors.NC}")
 
-                # Show first question feedback as example
-                for key, feedback in feedbacks.items():
-                    if "question_" in key and "feedback" in key:
-                        preview = (
-                            feedback[:100] + "..." if len(feedback) > 100 else feedback
-                        )
-                        print(
-                            f"{Colors.YELLOW}💬 Sample feedback: {preview}{Colors.NC}"
-                        )
-                        break
+                # Show a preview of the first interview feedback
+                if interview_feedbacks:
+                    preview = interview_feedbacks[0][:150] + "..." if len(interview_feedbacks[0]) > 150 else interview_feedbacks[0]
+                    print(f"{Colors.YELLOW}� Interview feedback preview: {preview}{Colors.NC}")
 
             elif response.status_code == 200:
                 print(
-                    f"{Colors.YELLOW}⚠️  Feedback retrieved but format unexpected{Colors.NC}"
+                    f"{Colors.YELLOW}⚠️  Feedback retrieved but format unexpected or empty.{Colors.NC}"
                 )
             else:
-                print(f"{Colors.RED}❌ Failed to retrieve feedback{Colors.NC}")
+                print(f"{Colors.RED}❌ Failed to retrieve feedback.{Colors.NC}")
 
             self.save_response("get_feedback", response_data)
             return response_data
@@ -904,9 +941,7 @@ startxref
             response_data = self.parse_response(response)
 
             if response.status_code == 404:
-                print(
-                    f"{Colors.YELLOW}⚠️  SKIP: Signup endpoint not available (404){Colors.NC}"
-                )
+                self.mark_test_skipped("POST /api/v1/signup/ (new user)", "Signup endpoint not available (404)")
                 return response_data
             else:
                 self.check_result(
@@ -982,13 +1017,25 @@ startxref
         print(f"{Colors.BLUE}{'=' * 50}{Colors.NC}")
         print(f"{Colors.GREEN}✅ Passed: {self.passed_tests}{Colors.NC}")
         print(f"{Colors.RED}❌ Failed: {self.failed_tests}{Colors.NC}")
+        print(f"{Colors.YELLOW}⚠️  Skipped: {self.skipped_tests}{Colors.NC}")
         print(f"{Colors.BLUE}📋 Total:  {self.total_tests}{Colors.NC}")
+
+        # Verify math
+        calculated_total = self.passed_tests + self.failed_tests + self.skipped_tests
+        if calculated_total != self.total_tests:
+            print(f"{Colors.YELLOW}⚠️  Note: Calculated total ({calculated_total}) doesn't match recorded total ({self.total_tests}){Colors.NC}")
 
         # Show failed tests if any
         if self.failed_test_names:
             print(f"\n{Colors.RED}❌ FAILED TESTS:{Colors.NC}")
             for i, test_name in enumerate(self.failed_test_names, 1):
                 print(f"{Colors.RED}  {i}. {test_name}{Colors.NC}")
+
+        # Show skipped tests if any
+        if self.skipped_test_names:
+            print(f"\n{Colors.YELLOW}⚠️  SKIPPED TESTS:{Colors.NC}")
+            for i, test_name in enumerate(self.skipped_test_names, 1):
+                print(f"{Colors.YELLOW}  {i}. {test_name}{Colors.NC}")
 
         if self.failed_tests == 0:
             print(f"\n{Colors.GREEN}🎉 All tests passed!{Colors.NC}")
