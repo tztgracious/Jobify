@@ -96,7 +96,8 @@
                     android:hint="Type your answer here..."
                     android:textColor="@color/text_primary"
                     android:textColorHint="@color/text_hint"
-                    android:minHeight="48dp"/>
+                    android:minHeight="48dp"
+                    android:inputType="text|textMultiLine|textNoSuggestions"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <Button
