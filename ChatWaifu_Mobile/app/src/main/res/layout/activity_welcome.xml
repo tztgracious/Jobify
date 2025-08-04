@@ -8,6 +8,52 @@
     android:background="@drawable/jobify_gradient_background"
     tools:context=".ui.welcome.WelcomeActivity">
 
+    <!-- 顶部装饰圆形 -->
+    <View
+        android:id="@+id/topDecoration"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:background="@drawable/circle_background"
+        android:alpha="0.1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="-100dp"
+        android:layout_marginStart="-100dp"/>
+
+    <View
+        android:id="@+id/topRightDecoration"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:background="@drawable/circle_background"
+        android:alpha="0.08"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="-75dp"
+        android:layout_marginEnd="-75dp"/>
+
+    <!-- 底部装饰圆形 -->
+    <View
+        android:id="@+id/bottomLeftDecoration"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:background="@drawable/circle_background"
+        android:alpha="0.06"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="-60dp"
+        android:layout_marginStart="-60dp"/>
+
+    <View
+        android:id="@+id/bottomRightDecoration"
+        android:layout_width="180dp"
+        android:layout_height="180dp"
+        android:background="@drawable/circle_background"
+        android:alpha="0.05"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="-90dp"
+        android:layout_marginEnd="-90dp"/>
+
     <!-- 主要内容区域 -->
     <LinearLayout
         android:layout_width="0dp"
