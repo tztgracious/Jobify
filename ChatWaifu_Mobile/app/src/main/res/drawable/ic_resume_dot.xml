@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="17dp"
+    android:height="17dp"
+    android:viewportWidth="17"
+    android:viewportHeight="17">
+    
+    <!-- 圆形背景 -->
+    <path
+        android:pathData="M14.136,8.613C14.136,11.927 11.449,14.613 8.136,14.613C4.822,14.613 2.136,11.927 2.136,8.613C2.136,5.299 4.822,2.613 8.136,2.613C11.449,2.613 14.136,5.299 14.136,8.613Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.667"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+    
+    <!-- 检查标记 -->
+    <path
+        android:pathData="M6.136,8.613L7.469,9.946L10.136,7.279"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.667"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+        
+</vector>

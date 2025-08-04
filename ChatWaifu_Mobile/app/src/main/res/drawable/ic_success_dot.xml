@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="17dp"
+    android:height="17dp"
+    android:viewportWidth="17"
+    android:viewportHeight="17">
+    
+    <!-- 图表/统计图标 -->
+    <path
+        android:pathData="M14.802,8.613H12.136L10.136,14.613L6.136,2.613L4.136,8.613H1.469"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.667"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+        
+</vector>

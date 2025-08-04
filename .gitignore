@@ -125,3 +125,4 @@ graphrag-api/graphrag/openl/cache/
 **/cache/
 
 resume.pdf
+.config/
