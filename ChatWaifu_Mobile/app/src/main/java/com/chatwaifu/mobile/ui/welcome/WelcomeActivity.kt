@@ -25,6 +25,8 @@ class WelcomeActivity : AppCompatActivity() {
             startActivity(Intent(this, UploadResumeActivity::class.java))
             finish()  // Close WelcomeActivity
         }
+
+
     }
 
     private fun startBackgroundAnimations() {
