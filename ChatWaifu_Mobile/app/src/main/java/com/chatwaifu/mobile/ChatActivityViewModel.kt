@@ -23,6 +23,7 @@ import com.chatwaifu.translate.baidu.BaiduTranslateService
 import com.chatwaifu.vits.utils.SoundGenerateHelper
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -398,49 +399,69 @@ class ChatActivityViewModel : ViewModel() {
     private val _interviewQuestionsLiveData = MutableLiveData<List<String>>()
     val interviewQuestionsLiveData: MutableLiveData<List<String>> = _interviewQuestionsLiveData
     
+    // Expose doc_id for UI
+    private val _docIdLiveData = MutableLiveData<String?>()
+    val docIdLiveData: MutableLiveData<String?> = _docIdLiveData
+    
     fun setDocId(id: String) {
         docId = id
+        _docIdLiveData.postValue(id)
         loadQuestionsFromBackend()
     }
     
     private fun loadQuestionsFromBackend() {
         docId?.let { id ->
             viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    Log.d(TAG, "Loading questions from backend for doc_id: $id")
-                    val apiService = JobifyApiService.create()
-                    val request = QuestionsRequest(id = id)
-                    val response = apiService.getAllQuestions(request)
-                    
-                    if (response.isSuccessful) {
-                        val questionsResponse = response.body()
-                        Log.d(TAG, "API Response: $questionsResponse")
+                val maxRetries = 10  // 最多重试10次
+                val retryDelay = 3000L  // 每次重试间隔3秒
+                
+                for (attempt in 1..maxRetries) {
+                    try {
+                        Log.d(TAG, "Loading questions from backend for doc_id: $id (Attempt $attempt/$maxRetries)")
+                        val apiService = JobifyApiService.create()
+                        val request = QuestionsRequest(id = id)
+                        val response = apiService.getAllQuestions(request)
                         
-                        if (questionsResponse?.finished == true) {
-                            // 只使用面试问题，不包含技术问题（技术问题由TechInterviewActivity单独处理）
-                            val interviewQuestionsOnly = questionsResponse.interview_questions
-                            Log.d(TAG, "Added ${interviewQuestionsOnly.size} interview questions (excluding tech questions)")
+                        if (response.isSuccessful) {
+                            val questionsResponse = response.body()
+                            Log.d(TAG, "API Response: $questionsResponse")
                             
-                            interviewQuestions.clear()
-                            interviewQuestions.addAll(interviewQuestionsOnly)
-                            currentQuestionIndex = 0
-                            
-                            // Update LiveData for UI
-                            _interviewQuestionsLiveData.postValue(interviewQuestions.toList())
-                            
-                            Log.d(TAG, "Successfully loaded ${interviewQuestions.size} interview questions from backend")
-                            Log.d(TAG, "Questions: $interviewQuestions")
+                            if (questionsResponse?.finished == true) {
+                                // 只使用面试问题，不包含技术问题（技术问题由TechInterviewActivity单独处理）
+                                val interviewQuestionsOnly = questionsResponse.interview_questions
+                                Log.d(TAG, "Added ${interviewQuestionsOnly.size} interview questions (excluding tech questions)")
+                                
+                                interviewQuestions.clear()
+                                interviewQuestions.addAll(interviewQuestionsOnly)
+                                currentQuestionIndex = 0
+                                
+                                // Update LiveData for UI
+                                _interviewQuestionsLiveData.postValue(interviewQuestions.toList())
+                                
+                                Log.d(TAG, "Successfully loaded ${interviewQuestions.size} interview questions from backend")
+                                Log.d(TAG, "Questions: $interviewQuestions")
+                                return@launch  // 成功加载，退出重试循环
+                            } else {
+                                Log.w(TAG, "Questions not finished yet (Attempt $attempt/$maxRetries), waiting...")
+                                if (attempt < maxRetries) {
+                                    delay(retryDelay)  // 等待3秒后重试
+                                } else {
+                                    Log.w(TAG, "Questions generation timeout after $maxRetries attempts, using default questions")
+                                    setDefaultQuestions()
+                                }
+                            }
                         } else {
-                            Log.w(TAG, "Questions not finished yet, using default questions")
+                            Log.e(TAG, "API call failed with status: ${response.code()}")
+                            if (attempt >= maxRetries) {
+                                setDefaultQuestions()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading questions from backend (Attempt $attempt/$maxRetries)", e)
+                        if (attempt >= maxRetries) {
                             setDefaultQuestions()
                         }
-                    } else {
-                        Log.e(TAG, "API call failed with status: ${response.code()}")
-                        setDefaultQuestions()
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error loading questions from backend", e)
-                    setDefaultQuestions()
                 }
             }
         } ?: run {

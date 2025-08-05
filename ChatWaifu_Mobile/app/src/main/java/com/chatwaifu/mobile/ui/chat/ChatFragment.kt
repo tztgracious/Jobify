@@ -124,6 +124,8 @@ class ChatFragment : Fragment() {
                             "Describe a challenging project you worked on and how you overcame obstacles."
                         )
                     )
+                    Log.d("ChatFragment", "Questions loaded: ${questions.size} questions")
+                    Log.d("ChatFragment", "Questions: $questions")
                     ChatContentScaffold(
                         originAndroidView = { live2DView!! },
                         onNavIconPressed = { activityViewModel.openDrawer() },

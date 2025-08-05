@@ -324,7 +324,10 @@ data class FeedbackRequest(
 // 反馈响应数据模型
 data class FeedbackResponse(
     val id: String,
-    val feedbacks: Map<String, String>
+    val feedbacks: Map<String, String>?,
+    val completed: Boolean?,
+    val message: String?,
+    val duration: String?
 )
 
 // 清理简历请求数据模型

@@ -107,6 +107,7 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
 
     implementation 'androidx.recyclerview:recyclerview:1.3.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     
     // Retrofit for network requests
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'

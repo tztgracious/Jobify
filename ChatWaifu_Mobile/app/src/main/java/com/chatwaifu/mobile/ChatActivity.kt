@@ -17,6 +17,8 @@ class ChatActivity : AppCompatActivity() {
     private val chatViewModel: ChatActivityViewModel by lazy {
         ViewModelProvider(this)[ChatActivityViewModel::class.java]
     }
+    
+    private var docId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,7 +29,7 @@ class ChatActivity : AppCompatActivity() {
         chatViewModel.setAnswerMode(answerMode)
         
         // 接收doc_id参数并传递给ViewModel
-        val docId = intent.getStringExtra("doc_id")
+        docId = intent.getStringExtra("doc_id")
         Log.d("ChatActivity", "Received doc_id: $docId")
         docId?.let { id ->
             Log.d("ChatActivity", "Setting doc_id in ViewModel: $id")

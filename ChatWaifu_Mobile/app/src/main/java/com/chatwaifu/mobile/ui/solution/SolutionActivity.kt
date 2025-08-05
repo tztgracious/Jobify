@@ -10,11 +10,16 @@ import com.chatwaifu.mobile.data.network.JobifyApiService
 import com.chatwaifu.mobile.data.network.FeedbackRequest
 import com.chatwaifu.mobile.data.network.FeedbackResponse
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 class SolutionActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySolutionBinding
     private val apiService = JobifyApiService.create()
     private val TAG = "SolutionActivity"
+    private var isLoadingFeedback = false
+    private var maxRetries = 12 // 最多重试12次 (12 * 10秒 = 2分钟)，之后用户可以上拉刷新
+    private var currentRetry = 0
+    private var docId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +30,7 @@ class SolutionActivity : AppCompatActivity() {
         val questions = intent.getStringArrayListExtra("questions") ?: arrayListOf()
         val answers = intent.getStringArrayListExtra("answers") ?: arrayListOf()
         val solutions = intent.getStringArrayListExtra("solutions") ?: arrayListOf()
-        val docId = intent.getStringExtra("doc_id")
+        docId = intent.getStringExtra("doc_id")
 
         // 填充UI
         if (questions.size >= 1) {
@@ -46,12 +51,23 @@ class SolutionActivity : AppCompatActivity() {
             binding.tvStandardAnswer3.text = "Solution: ${solutions.getOrNull(2) ?: ""}"
         }
 
+        // 设置上拉刷新
+        binding.swipeRefresh.setOnRefreshListener {
+            Log.d(TAG, "Pull-to-refresh triggered")
+            refreshFeedback()
+        }
+        
         // 加载反馈
         docId?.let { id ->
+            Log.d(TAG, "Loading feedback for doc_id: $id")
             loadFeedback(id)
+        } ?: run {
+            Log.e(TAG, "No doc_id provided for feedback loading")
+            showFeedbackError("No document ID provided")
         }
 
         binding.btnBack.setOnClickListener { finish() }
+        
         binding.btnNext.setOnClickListener {
             // 跳转到Tips页面
             val intent = android.content.Intent(this, com.chatwaifu.mobile.ui.tips.TipsActivity::class.java)
@@ -61,29 +77,77 @@ class SolutionActivity : AppCompatActivity() {
         }
     }
     
-    private fun loadFeedback(docId: String) {
-        Log.d(TAG, "Loading feedback for doc_id: $docId")
+    private fun refreshFeedback() {
+        Log.d(TAG, "Refreshing feedback...")
+        // 重置计数器并重新加载
+        currentRetry = 0
+        isLoadingFeedback = false
         
-        // 显示加载状态
-        showLoadingState(true)
+        docId?.let { id ->
+            loadFeedback(id)
+        } ?: run {
+            Log.e(TAG, "No doc_id available for refresh")
+            showFeedbackError("No document ID available")
+            binding.swipeRefresh.isRefreshing = false
+        }
+    }
+    
+    private fun loadFeedback(docId: String) {
+        if (isLoadingFeedback) {
+            Log.d(TAG, "Already loading feedback, skipping duplicate request")
+            return
+        }
+        
+        isLoadingFeedback = true
+        currentRetry++
+        Log.d(TAG, "Loading feedback for doc_id: $docId (Attempt $currentRetry/$maxRetries)")
         
         lifecycleScope.launch {
+            var feedbackCompleted = false
+            
             try {
+                // 显示加载状态
+                showLoadingState(true, currentRetry, maxRetries)
+                
                 val request = FeedbackRequest(id = docId, answer_type = "text")
                 val response = apiService.getFeedback(request)
                 
                 if (response.isSuccessful) {
                     val feedbackData = response.body()
                     Log.d(TAG, "Feedback response: $feedbackData")
-                    Log.d(TAG, "Feedback data type: ${feedbackData?.javaClass?.simpleName}")
                     
-                    if (feedbackData != null && feedbackData.feedbacks.isNotEmpty()) {
-                        Log.d(TAG, "Feedbacks map: ${feedbackData.feedbacks}")
-                        Log.d(TAG, "Feedbacks keys: ${feedbackData.feedbacks.keys}")
-                        updateUIWithFeedback(feedbackData.feedbacks)
+                    if (feedbackData != null) {
+                        Log.d(TAG, "Response details - completed: ${feedbackData.completed}, message: ${feedbackData.message}")
+                        
+                        // 检查是否完成
+                        if (feedbackData.completed == true && feedbackData.feedbacks != null && feedbackData.feedbacks.isNotEmpty()) {
+                            Log.d(TAG, "Feedback completed successfully")
+                            Log.d(TAG, "Feedbacks map: ${feedbackData.feedbacks}")
+                            Log.d(TAG, "Feedbacks keys: ${feedbackData.feedbacks.keys}")
+                            updateUIWithFeedback(feedbackData.feedbacks)
+                            feedbackCompleted = true
+                            isLoadingFeedback = false
+                            showLoadingState(false, 0, 0)
+                            return@launch
+                        } else if (feedbackData.completed == false) {
+                            // 反馈还在处理中，继续重试
+                            Log.d(TAG, "Feedback still processing: ${feedbackData.message}")
+                            if (currentRetry < maxRetries) {
+                                delay(10000) // 等待10秒
+                                isLoadingFeedback = false
+                                loadFeedback(docId) // 递归重试
+                                return@launch
+                            } else {
+                                Log.w(TAG, "Max retries reached, giving up")
+                                showFeedbackError("AI feedback generation is taking longer than expected (>2 minutes). This may be due to high server load or complex analysis. Please try refreshing in a few minutes.")
+                            }
+                        } else {
+                            Log.w(TAG, "Unexpected feedback state: completed=${feedbackData.completed}, feedbacks=${feedbackData.feedbacks}")
+                            showFeedbackError("Unexpected feedback state. Please try again.")
+                        }
                     } else {
-                        Log.w(TAG, "Empty feedback received")
-                        showFeedbackError("No feedback available yet. Please try again later.")
+                        Log.w(TAG, "Empty feedback response")
+                        showFeedbackError("Empty response from server.")
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
@@ -92,10 +156,15 @@ class SolutionActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading feedback", e)
+                Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+                Log.e(TAG, "Exception message: ${e.message}")
+                Log.e(TAG, "Exception stack trace: ${e.stackTraceToString()}")
                 showFeedbackError("Network error: ${e.message}")
             } finally {
-                // 隐藏加载状态
-                showLoadingState(false)
+                isLoadingFeedback = false
+                if (currentRetry >= maxRetries || feedbackCompleted) {
+                    showLoadingState(false, 0, 0)
+                }
             }
         }
     }
@@ -154,18 +223,21 @@ class SolutionActivity : AppCompatActivity() {
     }
     
     private fun showFeedbackError(errorMessage: String) {
-        // 显示错误信息，可以添加一个TextView来显示错误
+        // 隐藏SwipeRefresh指示器
+        binding.swipeRefresh.isRefreshing = false
+        
+        // 显示错误信息
         Log.e(TAG, errorMessage)
         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
         
         // 显示默认内容而不是隐藏卡片
-        binding.tvFeedback1?.text = "Feedback: Unable to load feedback. Please try again later."
+        binding.tvFeedback1?.text = "Feedback: Unable to load feedback. Pull down to refresh."
         binding.tvFeedback1?.visibility = android.view.View.VISIBLE
         
         binding.tvFeedback2?.text = "Feedback: Unable to load feedback. Please try again later."
         binding.tvFeedback2?.visibility = android.view.View.VISIBLE
         
-        binding.tvFeedback3?.text = "Feedback: Unable to load feedback. Please try again later."
+        binding.tvFeedback3?.text = "Feedback: Unable to load feedback. Pull down to refresh."
         binding.tvFeedback3?.visibility = android.view.View.VISIBLE
         
         binding.tvTechFeedback?.text = "Tech Feedback: Unable to load technical feedback."
@@ -175,10 +247,40 @@ class SolutionActivity : AppCompatActivity() {
         binding.tvSummary?.visibility = android.view.View.VISIBLE
     }
 
-    private fun showLoadingState(show: Boolean) {
-        // 可以在这里添加加载指示器的显示/隐藏逻辑
+    private fun showLoadingState(show: Boolean, currentAttempt: Int = 0, maxAttempts: Int = 0) {
         if (show) {
-            Toast.makeText(this, "Loading feedback...", Toast.LENGTH_SHORT).show()
+            val message = if (currentAttempt > 0 && maxAttempts > 0) {
+                "Loading feedback... (Attempt $currentAttempt/$maxAttempts)"
+            } else {
+                "Loading feedback..."
+            }
+            
+            // 如果不是通过SwipeRefresh触发的，显示SwipeRefresh指示器
+            if (!binding.swipeRefresh.isRefreshing) {
+                binding.swipeRefresh.isRefreshing = true
+            }
+            
+            // 显示在反馈区域
+            binding.tvFeedback1?.text = message
+            binding.tvFeedback1?.visibility = android.view.View.VISIBLE
+            
+            binding.tvFeedback2?.text = "Please wait, AI is generating personalized feedback..."
+            binding.tvFeedback2?.visibility = android.view.View.VISIBLE
+            
+            binding.tvFeedback3?.text = "AI feedback generation may take 2-5 minutes. Pull down to refresh if needed."
+            binding.tvFeedback3?.visibility = android.view.View.VISIBLE
+            
+            binding.tvTechFeedback?.text = "Tech Feedback: Processing..."
+            binding.tvTechFeedback?.visibility = android.view.View.VISIBLE
+            
+            binding.tvSummary?.text = "Generating comprehensive interview analysis..."
+            binding.tvSummary?.visibility = android.view.View.VISIBLE
+            
+            Log.d(TAG, message)
+        } else {
+            // 隐藏SwipeRefresh指示器
+            binding.swipeRefresh.isRefreshing = false
+            Log.d(TAG, "Loading completed")
         }
     }
 } 
