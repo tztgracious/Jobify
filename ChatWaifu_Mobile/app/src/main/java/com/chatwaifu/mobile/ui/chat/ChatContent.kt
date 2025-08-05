@@ -313,17 +313,17 @@ fun ChatContent(
                         Button(
                             onClick = {
                                 val intent = android.content.Intent(context, com.chatwaifu.mobile.ui.solution.SolutionActivity::class.java)
-                                intent.putStringArrayListExtra("questions", java.util.ArrayList(listOf(
-                                    "Please introduce yourself and tell me about your background.",
-                                    "What are your greatest strengths and how would they benefit this role?",
-                                    "Describe a challenging project you worked on and how you overcame obstacles."
-                                )))
+                                // 使用动态问题而不是硬编码问题
+                                intent.putStringArrayListExtra("questions", java.util.ArrayList(questions))
                                 intent.putStringArrayListExtra("answers", java.util.ArrayList(userAnswers))
                                 intent.putStringArrayListExtra("solutions", java.util.ArrayList(listOf(
-                                    "Fake solution 1: Try to be confident and concise.",
-                                    "Fake solution 2: Highlight your teamwork and adaptability.",
-                                    "Fake solution 3: Focus on problem-solving and learning from failure."
+                                    "Solution will be provided by AI feedback system.",
+                                    "Solution will be provided by AI feedback system.",
+                                    "Solution will be provided by AI feedback system."
                                 )))
+                                // 获取当前会话信息
+                                val sessionInfo = chatActivityViewModel.getCurrentSessionInfo()
+                                intent.putExtra("doc_id", sessionInfo.first)
                                 context.startActivity(intent)
                             },
                             modifier = Modifier.fillMaxWidth()

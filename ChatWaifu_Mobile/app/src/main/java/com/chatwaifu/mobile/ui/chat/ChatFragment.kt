@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -115,10 +116,13 @@ class ChatFragment : Fragment() {
                     }
                 }
                 ChatWaifu_MobileTheme {
-                    val questions = listOf(
-                        "Please introduce yourself and tell me about your background.",
-                        "What are your greatest strengths and how would they benefit this role?",
-                        "Describe a challenging project you worked on and how you overcame obstacles."
+                    // Use dynamic questions from ViewModel
+                    val questions by activityViewModel.interviewQuestionsLiveData.observeAsState(
+                        initial = listOf(
+                            "Please introduce yourself and tell me about your background.",
+                            "What are your greatest strengths and how would they benefit this role?",
+                            "Describe a challenging project you worked on and how you overcame obstacles."
+                        )
                     )
                     ChatContentScaffold(
                         originAndroidView = { live2DView!! },

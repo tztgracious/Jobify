@@ -2,6 +2,7 @@ package com.chatwaifu.mobile.ui.answermode
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
@@ -106,6 +107,7 @@ class AnswerModeSelectActivity : AppCompatActivity() {
     }
 
     private fun goToChatActivity(mode: String) {
+        Log.d("AnswerModeSelectActivity", "Going to ChatActivity with mode: $mode, doc_id: $docId")
         val intent = Intent(this@AnswerModeSelectActivity, ChatActivity::class.java)
         intent.putExtra("answer_mode", mode)
         intent.putExtra("doc_id", docId)

@@ -16,8 +16,8 @@ from typing import Any, Dict
 import requests
 
 # Configuration
-# BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
-BASE_URL = "http://localhost:8000"  # Uncomment for local testing
+BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
+# BASE_URL = "http://localhost:8000"  # Uncomment for local testing
 # BASE_URL = "http://115.29.170.231"  # Use HTTP if HTTPS has issues
 
 # SSL Configuration for self-signed certificates
