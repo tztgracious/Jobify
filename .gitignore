@@ -99,7 +99,7 @@ uvicorn.pid
 gunicorn.pid
 
 # GraphRAG output files (if you don't want to commit them)
-graphrag-api/output/
+graphrag-api
 **/output/*.parquet
 **/output/*.json
 **/output/*.csv
@@ -118,3 +118,10 @@ graphrag-api/graphrag/openl/cache/
 
 #test code for multi agent 
 backend/interview/test_multi_agent.py
+
+# GraphRAG cache folders
+graphrag-api/graphrag/openl/cache/
+**/graphrag/**/cache/
+**/cache/
+
+resume.pdf

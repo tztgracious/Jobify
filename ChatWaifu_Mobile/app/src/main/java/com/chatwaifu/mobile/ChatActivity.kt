@@ -2,6 +2,7 @@ package com.chatwaifu.mobile
 
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.appcompat.app.AppCompatActivity
@@ -16,13 +17,26 @@ class ChatActivity : AppCompatActivity() {
     private val chatViewModel: ChatActivityViewModel by lazy {
         ViewModelProvider(this)[ChatActivityViewModel::class.java]
     }
+    
+    private var docId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         // 接收答题模式参数
         val answerMode = intent.getStringExtra("answer_mode") ?: "text"
+        Log.d("ChatActivity", "Received answer_mode: $answerMode")
         chatViewModel.setAnswerMode(answerMode)
+        
+        // 接收doc_id参数并传递给ViewModel
+        docId = intent.getStringExtra("doc_id")
+        Log.d("ChatActivity", "Received doc_id: $docId")
+        docId?.let { id ->
+            Log.d("ChatActivity", "Setting doc_id in ViewModel: $id")
+            chatViewModel.setDocId(id)
+        } ?: run {
+            Log.w("ChatActivity", "No doc_id received from intent")
+        }
         
         setContentView(
             ComposeView(this).apply {

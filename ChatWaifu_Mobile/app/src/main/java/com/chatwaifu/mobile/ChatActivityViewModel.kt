@@ -16,11 +16,14 @@ import com.chatwaifu.mobile.ui.common.ChatDialogContentUIState
 import com.chatwaifu.mobile.utils.AssistantMessageManager
 import com.chatwaifu.mobile.utils.LipsValueHandler
 import com.chatwaifu.mobile.utils.LocalModelManager
+import com.chatwaifu.mobile.data.network.JobifyApiService
+import com.chatwaifu.mobile.data.network.QuestionsRequest
 import com.chatwaifu.translate.ITranslate
 import com.chatwaifu.translate.baidu.BaiduTranslateService
 import com.chatwaifu.vits.utils.SoundGenerateHelper
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -280,7 +283,6 @@ class ChatActivityViewModel : ViewModel() {
         if (!response?.errorMsg.isNullOrEmpty()) {
             return ChatDialogContentUIState(isFromMe = false, errorMsg = response?.errorMsg)
         }
-
         return ChatDialogContentUIState(
             isFromMe = false,
             chatContent = response?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
@@ -314,13 +316,33 @@ class ChatActivityViewModel : ViewModel() {
 
     fun onReady() {
         isReady.postValue(true)
-        // 直接显示第一个问题
+        // 检查问题是否已加载，如果没有则等待或使用默认问题
         viewModelScope.launch(Dispatchers.IO) {
+            // 如果没有问题且没有docId，使用默认问题
+            if (interviewQuestions.isEmpty() && docId == null) {
+                setDefaultQuestions()
+            }
+            
+            // 等待问题加载（最多等待5秒）
+            var attempts = 0
+            while (interviewQuestions.isEmpty() && attempts < 10) {
+                Log.d(TAG, "Waiting for questions to load, attempt: ${attempts + 1}")
+                kotlinx.coroutines.delay(500)
+                attempts++
+            }
+            
+            if (interviewQuestions.isEmpty()) {
+                Log.w(TAG, "No questions loaded after waiting, using default questions")
+                setDefaultQuestions()
+            }
+            
             val question = if (currentQuestionIndex < interviewQuestions.size) {
                 interviewQuestions[currentQuestionIndex]
             } else {
                 "Thank you for your answer. The interview is over."
             }
+            
+            Log.d(TAG, "Displaying question: $question")
             
             // 更新当前问题状态
             currentQuestionText.postValue(question)
@@ -368,13 +390,97 @@ class ChatActivityViewModel : ViewModel() {
         )
     }
 
-    // Interview questions in English
-    private val interviewQuestions = listOf(
-        "Please introduce yourself and tell me about your background.",
-        "What are your greatest strengths and how would they benefit this role?",
-        "Describe a challenging project you worked on and how you overcame obstacles."
-    )
+    // Dynamic interview questions from backend
+    private val interviewQuestions = mutableListOf<String>()
     private var currentQuestionIndex = 0
+    private var docId: String? = null
+    
+    // Expose questions for UI
+    private val _interviewQuestionsLiveData = MutableLiveData<List<String>>()
+    val interviewQuestionsLiveData: MutableLiveData<List<String>> = _interviewQuestionsLiveData
+    
+    // Expose doc_id for UI
+    private val _docIdLiveData = MutableLiveData<String?>()
+    val docIdLiveData: MutableLiveData<String?> = _docIdLiveData
+    
+    fun setDocId(id: String) {
+        docId = id
+        _docIdLiveData.postValue(id)
+        loadQuestionsFromBackend()
+    }
+    
+    private fun loadQuestionsFromBackend() {
+        docId?.let { id ->
+            viewModelScope.launch(Dispatchers.IO) {
+                val maxRetries = 10  // 最多重试10次
+                val retryDelay = 3000L  // 每次重试间隔3秒
+                
+                for (attempt in 1..maxRetries) {
+                    try {
+                        Log.d(TAG, "Loading questions from backend for doc_id: $id (Attempt $attempt/$maxRetries)")
+                        val apiService = JobifyApiService.create()
+                        val request = QuestionsRequest(id = id)
+                        val response = apiService.getAllQuestions(request)
+                        
+                        if (response.isSuccessful) {
+                            val questionsResponse = response.body()
+                            Log.d(TAG, "API Response: $questionsResponse")
+                            
+                            if (questionsResponse?.finished == true) {
+                                // 只使用面试问题，不包含技术问题（技术问题由TechInterviewActivity单独处理）
+                                val interviewQuestionsOnly = questionsResponse.interview_questions
+                                Log.d(TAG, "Added ${interviewQuestionsOnly.size} interview questions (excluding tech questions)")
+                                
+                                interviewQuestions.clear()
+                                interviewQuestions.addAll(interviewQuestionsOnly)
+                                currentQuestionIndex = 0
+                                
+                                // Update LiveData for UI
+                                _interviewQuestionsLiveData.postValue(interviewQuestions.toList())
+                                
+                                Log.d(TAG, "Successfully loaded ${interviewQuestions.size} interview questions from backend")
+                                Log.d(TAG, "Questions: $interviewQuestions")
+                                return@launch  // 成功加载，退出重试循环
+                            } else {
+                                Log.w(TAG, "Questions not finished yet (Attempt $attempt/$maxRetries), waiting...")
+                                if (attempt < maxRetries) {
+                                    delay(retryDelay)  // 等待3秒后重试
+                                } else {
+                                    Log.w(TAG, "Questions generation timeout after $maxRetries attempts, using default questions")
+                                    setDefaultQuestions()
+                                }
+                            }
+                        } else {
+                            Log.e(TAG, "API call failed with status: ${response.code()}")
+                            if (attempt >= maxRetries) {
+                                setDefaultQuestions()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading questions from backend (Attempt $attempt/$maxRetries)", e)
+                        if (attempt >= maxRetries) {
+                            setDefaultQuestions()
+                        }
+                    }
+                }
+            }
+        } ?: run {
+            Log.w(TAG, "No doc_id provided, using default questions")
+            setDefaultQuestions()
+        }
+    }
+    
+    private fun setDefaultQuestions() {
+        interviewQuestions.clear()
+        interviewQuestions.addAll(listOf(
+            "Please introduce yourself and tell me about your background.",
+            "What are your greatest strengths and how would they benefit this role?",
+            "Describe a challenging project you worked on and how you overcame obstacles."
+        ))
+        // Update LiveData for UI
+        _interviewQuestionsLiveData.postValue(interviewQuestions.toList())
+        Log.d(TAG, "Set default questions: ${interviewQuestions.size}")
+    }
 }
 
 fun <T> CancellableContinuation<T>.safeResume(value: T) {

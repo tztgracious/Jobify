@@ -1,6 +1,7 @@
 package com.chatwaifu.mobile.ui.chat
 
 import android.content.Context
+import android.util.Log
 import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -313,17 +314,18 @@ fun ChatContent(
                         Button(
                             onClick = {
                                 val intent = android.content.Intent(context, com.chatwaifu.mobile.ui.solution.SolutionActivity::class.java)
-                                intent.putStringArrayListExtra("questions", java.util.ArrayList(listOf(
-                                    "Please introduce yourself and tell me about your background.",
-                                    "What are your greatest strengths and how would they benefit this role?",
-                                    "Describe a challenging project you worked on and how you overcame obstacles."
-                                )))
+                                // 使用动态问题而不是硬编码问题
+                                intent.putStringArrayListExtra("questions", java.util.ArrayList(questions))
                                 intent.putStringArrayListExtra("answers", java.util.ArrayList(userAnswers))
                                 intent.putStringArrayListExtra("solutions", java.util.ArrayList(listOf(
-                                    "Fake solution 1: Try to be confident and concise.",
-                                    "Fake solution 2: Highlight your teamwork and adaptability.",
-                                    "Fake solution 3: Focus on problem-solving and learning from failure."
+                                    "Solution will be provided by AI feedback system.",
+                                    "Solution will be provided by AI feedback system.",
+                                    "Solution will be provided by AI feedback system."
                                 )))
+                                // 从ChatActivityViewModel获取doc_id
+                                val docId = chatActivityViewModel.docIdLiveData.value
+                                Log.d("ChatContent", "Doc ID from ViewModel: $docId")
+                                intent.putExtra("doc_id", docId ?: "unknown")
                                 context.startActivity(intent)
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -336,16 +338,12 @@ fun ChatContent(
         }
         if (showSolutionScreen) {
             SolutionScreen(
-                questions = listOf(
-                    "Please introduce yourself and tell me about your background.",
-                    "What are your greatest strengths and how would they benefit this role?",
-                    "Describe a challenging project you worked on and how you overcame obstacles."
-                ),
+                questions = questions,
                 answers = userAnswers.toList(),
                 solutions = listOf(
-                    "Fake solution 1: Try to be confident and concise.",
-                    "Fake solution 2: Highlight your teamwork and adaptability.",
-                    "Fake solution 3: Focus on problem-solving and learning from failure."
+                    "Solution will be provided by AI feedback system.",
+                    "Solution will be provided by AI feedback system.",
+                    "Solution will be provided by AI feedback system."
                 )
             )
         }

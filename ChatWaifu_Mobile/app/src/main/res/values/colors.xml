@@ -44,6 +44,13 @@
     <color name="gradient_start">#667eea</color>
     <color name="gradient_end">#764ba2</color>
     
+    <!-- Jobify Brand Colors -->
+    <color name="jobify_purple_start">#667eea</color>
+    <color name="jobify_purple_end">#764ba2</color>
+    <color name="jobify_white">#FFFFFF</color>
+    <color name="jobify_white_80">#CCFFFFFF</color>
+    <color name="jobify_white_60">#99FFFFFF</color>
+    
     <color name="card_background">#FFFFFF</color>
     <color name="card_background_dark">#2D2D2D</color>
     

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="17dp"
+    android:height="17dp"
+    android:viewportWidth="17"
+    android:viewportHeight="17">
+    
+    <!-- 闪电图标 -->
+    <path
+        android:pathData="M8.802,1.946L2.136,9.946H8.136L7.469,15.279L14.136,7.279H8.136L8.802,1.946Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.667"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+        
+</vector>

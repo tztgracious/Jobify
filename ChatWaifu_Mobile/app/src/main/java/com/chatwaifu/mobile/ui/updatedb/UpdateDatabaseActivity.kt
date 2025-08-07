@@ -45,9 +45,7 @@ class UpdateDatabaseActivity : AppCompatActivity() {
             uploadPdfFile()
         }
         binding.btnBack.setOnClickListener {
-            // 跳转到TipsActivity
-            val intent = Intent(this, com.chatwaifu.mobile.ui.tips.TipsActivity::class.java)
-            startActivity(intent)
+            // 返回到Tips页面
             finish()
         }
         binding.btnFinish.setOnClickListener {
