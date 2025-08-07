@@ -31,9 +31,7 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 | ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | LlamaParse    | Process PDF files                                | [llamaindex.ai/llamaparse](https://www.llamaindex.ai/llamaparse?gad_source=1&gad_campaignid=21116317807&gbraid=0AAAAA9du_J0CkmThGan_q1frhfR59JbAE&gclid=Cj0KCQjwyIPDBhDBARIsAHJyyVjUe6Zg1Wtgn6OlPtRq2REI2zOr368RSxqPsimjxi_sFbUiBKNWaWwaAr_AEALw_wcB) |
 | OpenAI API    | Extract keywords and form questions              | [platform.openai.com](https://platform.openai.com/docs/)                                                                                                                                                                                              |
-| spaCy         | NLP toolkit in Python                            | [spacy.io](https://spacy.io/)                                                                                                                                                                                                                         |
 | LanguageTool  | Grammar and style checking                       | [languagetool.org](https://languagetool.org/)                                                                                                                                                                                                         |
-| Neo4j         | Graph database for knowledge representation      | [neo4j.com](https://neo4j.com/)                                                                                                                                                                                                                       |
 | Express.js    | Minimal backend framework for Node.js            | [expressjs.com](https://expressjs.com/)                                                                                                                                                                                                               |
 | AWS Boto3 SDK | Python SDK for accessing AWS services (e.g., S3) | [boto3.amazonaws.com](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)                                                                                                                                                             |
 | FFmpeg        | Video/audio processing for recordings            | [ffmpeg.org](https://ffmpeg.org/)                                                                                                                                                                                                                     |
@@ -42,10 +40,9 @@ Below is the minimal set of third‑party tools, libraries, SDKs and cloud servi
 
 ### 🧰 Infrastructure & Data Storage
 
-| Library/Tool | Purpose                 | Link                                          |
-| ------------ | ----------------------- | --------------------------------------------- |
-| PostgreSQL   | Relational database     | [postgresql.org](https://www.postgresql.org/) |
-| MongoDB      | NoSQL document database | [mongodb.com](https://www.mongodb.com/)       |
+| Library/Tool | Purpose             | Link                                          |
+| ------------ | ------------------- | --------------------------------------------- |
+| PostgreSQL   | Relational database | [postgresql.org](https://www.postgresql.org/) |
 
 ---
 
@@ -82,17 +79,36 @@ The knowledge graph obtains information from uploaded files and stores all known
 
 ## APIs and Controller
 
-**1. POST /upload-resume**
+### Resume APIs
 
-It accepts users' resumes in PDF files and sends them to LlamaParse for structured content extraction. It returns JSON representation of the parsed resume.
+| Endpoint                       | Method | Purpose                                   | Status      |
+| ------------------------------ | ------ | ----------------------------------------- | ----------- |
+| `/api/v1/upload-resume/`       | POST   | Upload PDF resume (< 5MB)                 | ✅ Complete |
+| `/api/v1/get-keywords/`        | POST   | Extract keywords from resume using OpenAI | ✅ Complete |
+| `/api/v1/get-grammar-results/` | POST   | Get grammar check results for resume      | ✅ Complete |
+| `/api/v1/target-job/`          | POST   | Save target job preferences               | ✅ Complete |
+| `/api/v1/remove-resume/`       | POST   | Remove specific resume by ID              | ✅ Complete |
+| `/api/v1/cleanup-all-resumes/` | POST   | Clean up all resume data                  | ✅ Complete |
+| `/api/v1/debug/`               | GET    | Debug information (development only)      | ✅ Complete |
 
-**2. POST /submit-answer**
+### Interview APIs
 
-It submits users' answer (text or video) to a specific question. It stores the response and evaluates it using OpenAI. It returns evaluation result and correct answers with explanations.
+| Endpoint                           | Method | Purpose                                          | Status                                        |
+| ---------------------------------- | ------ | ------------------------------------------------ | --------------------------------------------- |
+| `/api/v1/get-all-questions/`       | POST   | Get both tech and interview questions            | ✅ Complete                                   |
+| `/api/v1/submit-interview-answer/` | POST   | Submit text/video answers to interview questions | ✅ Complete                                   |
+| `/api/v1/submit-tech-answer/`      | POST   | Submit technical question answers                | ⚠️ Functional but needs proper tech questions |
+| `/api/v1/feedback/`                | POST   | Get AI feedback on text answers                  | ✅ Complete for text and video                |
 
-**3. POST /update-knowledge-graph**
+### GraphRAG APIs
 
-It adds new nodes (concepts, questions, answers) to the Neo4j knowledge graph. It returns an update confirmation.
+| Endpoint         | Method | Purpose                                 | Status      |
+| ---------------- | ------ | --------------------------------------- | ----------- |
+| `/search/global` | GET    | Global knowledge graph search           | ✅ Complete |
+| `/search/local`  | GET    | Local contextual search within entities | ✅ Complete |
+| `/search/drift`  | GET    | DRIFT search for emerging topics        | ✅ Complete |
+| `/search/basic`  | GET    | Basic text unit search                  | ✅ Complete |
+| `/status`        | GET    | GraphRAG service health check           | ✅ Complete |
 
 <!--
 The **REST + WebSocket surface** defines how the React front‑end communicates with the engine.
@@ -147,13 +163,13 @@ Returns the final PDF plus a machine‑readable JSON companion.
 
 ## Team Roster
 
-| Member           | Contribution<sup>†</sup> |
-| ---------------- | ------------------------ |
-| **Zhitong Tang** |                          |
-| **Minjia Tang**  |                          |
-| **Yile Sun**     |                          |
-| **Zhenjie Sun**  |                          |
-| **Houcheng Yu**  |                          |
+| Member           | Contribution<sup>†</sup>                 |
+| ---------------- | ---------------------------------------- |
+| **Zhitong Tang** | Frontend, testing                        |
+| **Minjia Tang**  | Backend, graphrag apis, testing          |
+| **Yile Sun**     | Frontend, digital human                  |
+| **Zhenjie Sun**  | Backend, multiagent system               |
+| **Houcheng Yu**  | Backend, django app, postgreSQL database |
 
 <sup>†</sup> Detailed contribution statements will be completed at project close‑out.
 
