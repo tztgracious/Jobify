@@ -16,8 +16,8 @@ from typing import Any, Dict
 import requests
 
 # Configuration
-# BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
-BASE_URL = "http://localhost:8000"  # Uncomment for local testing
+BASE_URL = "https://115.29.170.231"  # Using HTTPS with self-signed cert
+# BASE_URL = "http://localhost:8000"  # Uncomment for local testing
 # BASE_URL = "http://115.29.170.231"  # Use HTTP if HTTPS has issues
 
 # SSL Configuration for self-signed certificates
@@ -306,7 +306,9 @@ startxref
     def test_get_keywords_valid(self):
         """Test get keywords with valid id"""
         if not self.id:
-            self.mark_test_skipped("GET /api/v1/get-keywords/ (valid id)", "No id available")
+            self.mark_test_skipped(
+                "GET /api/v1/get-keywords/ (valid id)", "No id available"
+            )
             return {}
 
         self.print_header("Get Keywords - Valid id")
@@ -424,7 +426,9 @@ startxref
     def test_get_grammar_valid(self):
         """Test get grammar results with valid id"""
         if not self.id:
-            self.mark_test_skipped("GET /api/v1/get-grammar-results/ (valid id)", "No id available")
+            self.mark_test_skipped(
+                "GET /api/v1/get-grammar-results/ (valid id)", "No id available"
+            )
             return {}
 
         self.print_header("Get Grammar Results - Valid id")
@@ -540,7 +544,9 @@ startxref
     def test_target_job_valid(self):
         """Test target job with valid data"""
         if not self.id:
-            self.mark_test_skipped("POST /api/v1/target-job/ (valid data)", "No id available")
+            self.mark_test_skipped(
+                "POST /api/v1/target-job/ (valid data)", "No id available"
+            )
             return {}
 
         self.print_header("Target Job - Valid")
@@ -588,7 +594,9 @@ startxref
     def test_get_questions_valid(self):
         """Test get interview questions with valid id"""
         if not self.id:
-            self.mark_test_skipped("POST /api/v1/get-all-questions/ (valid id)", "No id available")
+            self.mark_test_skipped(
+                "POST /api/v1/get-all-questions/ (valid id)", "No id available"
+            )
             return {}
 
         self.print_header("Get Interview Questions - Valid")
@@ -679,7 +687,9 @@ startxref
     def test_submit_tech_question_valid(self):
         """Test submitting technical question answers"""
         if not self.id:
-            self.mark_test_skipped("POST /api/v1/submit-tech-answer/", "No id available")
+            self.mark_test_skipped(
+                "POST /api/v1/submit-tech-answer/", "No id available"
+            )
             return {}
 
         self.print_header("Submit Technical Question Answers - Valid")
@@ -731,7 +741,9 @@ startxref
     def test_submit_interview_answer(self):
         """Test submitting answers to interview questions"""
         if not self.id:
-            self.mark_test_skipped("POST /api/v1/submit-interview-answer/", "No id available")
+            self.mark_test_skipped(
+                "POST /api/v1/submit-interview-answer/", "No id available"
+            )
             return {}
 
         self.print_header("Submit Interview Answers - Valid")
@@ -848,12 +860,18 @@ startxref
                 response_data = self.parse_response(response)
 
                 # Check if feedback generation is complete
-                if response.status_code == 200 and response_data.get("completed") is True:
+                if (
+                    response.status_code == 200
+                    and response_data.get("completed") is True
+                ):
                     print(f"{Colors.GREEN}✅ Feedback generation complete!{Colors.NC}")
                     break  # Exit loop on success
 
                 # Check if still processing
-                if response.status_code == 200 and response_data.get("completed") is False:
+                if (
+                    response.status_code == 200
+                    and response_data.get("completed") is False
+                ):
                     if attempt < max_retries - 1:
                         print(
                             f"{Colors.YELLOW}⏳ Feedback is processing. Waiting {retry_delay} seconds...{Colors.NC}"
@@ -886,7 +904,11 @@ startxref
             )
 
             # Display feedback information
-            if response.status_code == 200 and "feedbacks" in response_data and response_data.get("feedbacks"):
+            if (
+                response.status_code == 200
+                and "feedbacks" in response_data
+                and response_data.get("feedbacks")
+            ):
                 feedbacks = response_data["feedbacks"]
 
                 # Display tech and interview feedback
@@ -899,13 +921,25 @@ startxref
 
                 # Show a preview of the first tech feedback
                 if tech_feedbacks:
-                    preview = tech_feedbacks[0][:150] + "..." if len(tech_feedbacks[0]) > 150 else tech_feedbacks[0]
-                    print(f"{Colors.YELLOW}📝 Tech feedback preview: {preview}{Colors.NC}")
+                    preview = (
+                        tech_feedbacks[0][:150] + "..."
+                        if len(tech_feedbacks[0]) > 150
+                        else tech_feedbacks[0]
+                    )
+                    print(
+                        f"{Colors.YELLOW}📝 Tech feedback preview: {preview}{Colors.NC}"
+                    )
 
                 # Show a preview of the first interview feedback
                 if interview_feedbacks:
-                    preview = interview_feedbacks[0][:150] + "..." if len(interview_feedbacks[0]) > 150 else interview_feedbacks[0]
-                    print(f"{Colors.YELLOW}� Interview feedback preview: {preview}{Colors.NC}")
+                    preview = (
+                        interview_feedbacks[0][:150] + "..."
+                        if len(interview_feedbacks[0]) > 150
+                        else interview_feedbacks[0]
+                    )
+                    print(
+                        f"{Colors.YELLOW}� Interview feedback preview: {preview}{Colors.NC}"
+                    )
 
             elif response.status_code == 200:
                 print(
@@ -941,7 +975,10 @@ startxref
             response_data = self.parse_response(response)
 
             if response.status_code == 404:
-                self.mark_test_skipped("POST /api/v1/signup/ (new user)", "Signup endpoint not available (404)")
+                self.mark_test_skipped(
+                    "POST /api/v1/signup/ (new user)",
+                    "Signup endpoint not available (404)",
+                )
                 return response_data
             else:
                 self.check_result(
@@ -1023,7 +1060,9 @@ startxref
         # Verify math
         calculated_total = self.passed_tests + self.failed_tests + self.skipped_tests
         if calculated_total != self.total_tests:
-            print(f"{Colors.YELLOW}⚠️  Note: Calculated total ({calculated_total}) doesn't match recorded total ({self.total_tests}){Colors.NC}")
+            print(
+                f"{Colors.YELLOW}⚠️  Note: Calculated total ({calculated_total}) doesn't match recorded total ({self.total_tests}){Colors.NC}"
+            )
 
         # Show failed tests if any
         if self.failed_test_names:
