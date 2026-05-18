@@ -1,11 +1,8 @@
 from django.conf import settings
 from django.http import JsonResponse
-from interview.utils import get_questions_using_openai
 from rest_framework.decorators import api_view
 from rest_framework.status import HTTP_200_OK
-from interview.utils import get_questions_using_openai_multi_agent
-from resume.utils import get_session_by_id
-
+from .services import ResumeService
 
 @api_view(["GET"])
 def debug_view(request):
@@ -13,14 +10,17 @@ def debug_view(request):
         return JsonResponse(
             {"error": "Debug endpoint disabled in production"}, status=403
         )
-    keywords = ["python", "django", "vue", "redis"]
-    session = get_session_by_id("e6e1bf9856ab47118ca1ed614f5cf320")
-    get_questions_using_openai_multi_agent(session)
+    session_id = "e6e1bf9856ab47118ca1ed614f5cf320"
+    session = ResumeService.get_session_by_id(session_id)
+    if session:
+        # For debug, we can trigger question generation manually
+        from interview.utils import get_questions_using_openai_multi_agent
+        get_questions_using_openai_multi_agent(session)
+    
     return JsonResponse(
         {
             "DEBUG": settings.DEBUG,
-            "questions": session.questions,
-            "tech_questions": session.tech_questions,
+            "session_found": session is not None,
         },
         status=HTTP_200_OK,
     )

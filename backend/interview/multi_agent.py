@@ -3,8 +3,7 @@ import re
 from enum import Enum
 from typing import List, Dict, Any
 
-import requests
-
+from .clients.llm_client import InterviewLLMClient
 from jobify_backend.logger import logger
 
 
@@ -19,9 +18,9 @@ class InterviewerRole(Enum):
 class BaseAgent:
     """Base class for all interview agents"""
 
-    def __init__(self, role: InterviewerRole, api_key: str):
+    def __init__(self, role: InterviewerRole, api_key: str = None, client: InterviewLLMClient = None):
         self.role = role
-        self.api_key = api_key
+        self.client = client or InterviewLLMClient()
         self.personality = self._define_personality()
 
     def _define_personality(self) -> str:
@@ -87,22 +86,7 @@ class BaseAgent:
         """
 
         try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "openai/gpt-4o",
-                    "messages": [{"role": "user", "content": prompt}]
-                }
-            )
-
-            response_text = response.json()["choices"][0]["message"]["content"]
-            # Clean and parse the response
-            cleaned_text = clean_json_response(response_text)
-            question_data = json.loads(cleaned_text)
+            question_data = self.client.complete(prompt)
 
             return {
                 "question": question_data["question"],
@@ -144,21 +128,7 @@ class BaseAgent:
         """
 
         try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "openai/gpt-4o",
-                    "messages": [{"role": "user", "content": prompt}],
-
-                }
-            )
-            response_text = response.json()["choices"][0]["message"]["content"]
-            cleaned_text = clean_json_response(response_text)
-            return json.loads(cleaned_text)
+            return self.client.complete(prompt)
         except Exception as e:
             logger.error(f"Error evaluating answer for {self.role.value}: {e}")
             return {
@@ -168,16 +138,3 @@ class BaseAgent:
                 "specific_feedback": "Error in evaluation",
                 "improvement_tips": ["Try to provide more specific examples"]
             }
-
-
-def clean_json_response(response_text):
-    """Clean markdown formatting from JSON responses"""
-    # Remove leading/trailing whitespace
-    cleaned = response_text.strip()
-
-    # This finds the first { and last } to extract just the JSON object
-    json_match = re.search(r'\{[^{}]*\{.*\}[^{}]*\}|\{[^{}]*\}', cleaned, re.DOTALL)
-    if json_match:
-        cleaned = json_match.group()
-
-    return cleaned

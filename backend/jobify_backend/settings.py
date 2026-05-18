@@ -140,6 +140,9 @@ STATIC_ROOT = BASE_DIR / "static"  # added line
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Custom user model
+AUTH_USER_MODEL = 'accounts.User'
+
 LLAMA_API_KEY = os.getenv("LLAMA_PARSE_API_KEY")
 LLAMA_API_URL = "https://api.cloud.llamaindex.ai/api/v1/parsing/upload"
 
@@ -148,6 +151,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 
 # Custom authentication backend
 AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
     "accounts.backends.EmailBackend",
 ]
 

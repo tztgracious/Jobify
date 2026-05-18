@@ -11,9 +11,9 @@ from jobify_backend.settings import MAX_VIDEO_FILE_SIZE
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from resume.utils import get_session_by_id
 
 from .models.interview_session import InterviewSession
+from .services import InterviewService
 from .utils import (
     get_questions_using_openai,
     get_feedback_using_openai_multi_agent,
@@ -25,77 +25,28 @@ from .utils import (
 def get_all_questions(request):
     """
     Retrieve all questions for a given id.
-    Accepts JSON data with:
-        - id: The resume document ID
-    Response:
-        - id: The resume document ID
-        - finished: True/False
-        - tech_questions: List of tech questions
-        - interview_questions: List of interview questions
-        - message: Status message
     """
     session_id = request.data.get("id")
     if not session_id:
         logger.warning("get_all_questions called without id")
         return Response({"error": "id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-    session = get_session_by_id(session_id)
+    session = InterviewService.get_session_by_id(session_id)
     if not session:
         logger.warning(f"All questions requested for non-existent id: {session_id}")
         return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Check if resume processing is complete
-    if session.resume_status != InterviewSession.Status.COMPLETE:
-        logger.info(
-            f"Resume still processing for id: {session_id}, status: {session.resume_status}"
-        )
-        return Response(
-            {
-                "id": session_id,
-                "finished": False,
-                "tech_questions": [],
-                "interview_questions": [],
-                "message": "Resume is still being processed. Please wait.",
-            },
-            status=status.HTTP_200_OK,
-        )
+    is_ready, message, data = InterviewService.check_session_readiness(session)
+    
+    response_data = {
+        "id": session_id,
+        "finished": data["finished"],
+        "tech_questions": data["tech_questions"],
+        "interview_questions": data["interview_questions"],
+        "message": message,
+    }
 
-    # Check if questions are ready
-    if session.question_status != InterviewSession.Status.COMPLETE:
-        logger.info(
-            f"Questions still processing for id: {session_id}, status: {session.question_status}"
-        )
-        return Response(
-            {
-                "id": session_id,
-                "finished": False,
-                "tech_questions": [],
-                "interview_questions": [],
-                "message": "Questions are still being generated. Please wait.",
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    # Get technical questions
-    tech_questions = session.tech_questions or []
-
-    # Get interview questions
-    interview_questions = session.questions or []
-
-    logger.info(
-        f"Retrieved all questions for id: {session_id}, tech: {len(tech_questions)}, interview: {len(interview_questions)}"
-    )
-
-    return Response(
-        {
-            "id": session_id,
-            "finished": True,
-            "tech_questions": tech_questions,
-            "interview_questions": interview_questions,
-            "message": "All questions retrieved successfully",
-        },
-        status=status.HTTP_200_OK,
-    )
+    return Response(response_data, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
@@ -139,43 +90,24 @@ def submit_tech_answer(request):
         )
 
     # Verify that the resume exists for the given id
-    resume = get_session_by_id(session_id)
-    if not resume:
+    session = InterviewService.get_session_by_id(session_id)
+    if not session:
         logger.warning(f"Tech answer submitted for non-existent id: {session_id}")
         return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Validate question index
-    tech_questions = resume.tech_questions or []
-    if question_index < 0 or question_index >= len(tech_questions):
-        logger.warning(f"Invalid question_index {question_index} for id: {session_id}")
-        return Response(
-            {
-                "error": f"Invalid question_index. Must be between 0 and {len(tech_questions) - 1}"
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    # Validate question index and text
+    is_valid, error_msg = InterviewService.validate_question_submission(
+        session, question_index, tech_question, is_tech=True
+    )
+    if not is_valid:
+        logger.warning(f"Validation failed for tech answer: {error_msg}")
+        return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Validate that the question text matches
-    if tech_questions[question_index] != tech_question:
-        logger.warning(
-            f"Question mismatch at index {question_index} for id: {session_id}"
-        )
-        return Response(
-            {
-                "error": "Question text does not match the question at the specified index"
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    # Ensure tech_answers list is properly sized
-    tech_answers = resume.tech_answers or []
-    while len(tech_answers) <= question_index:
-        tech_answers.append("")
-
-    # Update the answer at the specified index
-    tech_answers[question_index] = tech_answer
-    resume.tech_answers = tech_answers
-    resume.save()
+    # Update the answer
+    InterviewService.update_answer(session, question_index, tech_answer, is_tech=True)
+    
+    # Check if this completes the session
+    InterviewService.check_and_update_completion_status(session)
 
     logger.info(f"Updated tech answer at index {question_index} for id: {session_id}")
 
@@ -240,65 +172,45 @@ def submit_interview_answer(request):
         )
 
     # Find the interview session by id
-    interview_session = InterviewSession.objects.filter(id=session_id).first()
-    if not interview_session:
+    session = InterviewService.get_session_by_id(session_id)
+    if not session:
         logger.warning(f"Interview session not found for id: {session_id}")
-        return Response(
-            {"error": "Interview session not found"}, status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"error": "Resume not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Validate question_index
-    if question_index < 0 or question_index >= len(interview_session.questions):
-        logger.warning(f"Invalid question_index {question_index} for id {session_id}")
-        return Response(
-            {
-                "error": f"question_index must be between 0 and {len(interview_session.questions) - 1}"
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    # Validate question index and text
+    is_valid, error_msg = InterviewService.validate_question_submission(
+        session, question_index, question_text, is_tech=False
+    )
+    if not is_valid:
+        logger.warning(f"Validation failed for interview answer: {error_msg}")
+        return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Process answer based on type using utility functions
+    result = {}
     if answer_type == "text":
-        answer = request.data.get("answer", "")
-        if not answer:
+        answer_text = request.data.get("answer", "").strip()
+        if not answer_text:
             logger.warning("submit_answer called without valid text answer")
             return Response(
                 {"error": "answer is required and cannot be empty"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Validate that the question text matches
-        if interview_session.questions[question_index] != question_text:
-            logger.warning(f"Question mismatch at index {question_index} for session {session_id}")
-            return Response(
-                {"error": "Question text does not match the question at the specified index"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         
-        # Ensure answers list is properly sized
-        answers = interview_session.answers or []
-        while len(answers) <= question_index:
-            answers.append("")
+        # Update the answer
+        InterviewService.update_answer(session, question_index, answer_text, is_tech=False)
         
-        # Update the answer at the specified index
-        answers[question_index] = answer
-        interview_session.answers = answers
-        interview_session.save()
-        
-        # Calculate progress
+        # Calculate progress for response
+        answers = session.answers or []
         answered_questions = sum(1 for ans in answers if ans.strip())
-        total_questions = len(interview_session.questions)
+        total_questions = len(session.questions)
         progress = round((answered_questions / total_questions) * 100, 2) if total_questions > 0 else 0
         is_completed = answered_questions == total_questions
-        
-        logger.info(f"Updated interview session for id {session_id} - answered question {question_index} with text answer")
-        
+
         result = {
             "id": session_id,
             "message": f"Text answer submitted for question {question_index + 1}",
             "question": question_text,
             "answer_type": "text",
-            "answer": answer,
+            "answer": answer_text,
             "progress": progress,
             "is_completed": is_completed,
         }
@@ -306,13 +218,8 @@ def submit_interview_answer(request):
     elif answer_type == "video":
         video_file = request.FILES.get("video")
         if not video_file:
-            logger.warning(
-                "submit_answer called without video file for video answer type"
-            )
-        # TODO: implement processing logic
-        # result = process_video_answer(
-        #     session_id, question_index, question_text, video_file, interview_session
-        # )
+            logger.warning("submit_answer called without video file for video answer type")
+        # TODO: implement video processing logic in Service
         result = {"error": "Video processing not yet implemented"}
 
     else:
@@ -322,13 +229,10 @@ def submit_interview_answer(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Handle the result from utility functions
-    if "error" in result:
-        return Response({"error": result["error"]}, status=status.HTTP_400_BAD_REQUEST)
-    if get_answers_status(interview_session):
-        threading.Thread(target=generate_feedback_background, args=(interview_session,)).start()
-        logger.info(f"Feedback generation thread started for session {interview_session.id}")
-    # Return the successful result
+    # Trigger feedback generation if all questions are answered
+    if InterviewService.check_and_update_completion_status(session):
+        InterviewService.trigger_feedback_generation(session)
+
     return Response(result, status=status.HTTP_200_OK)
 
 
@@ -532,57 +436,22 @@ def upload_video(request):
         )
 
 
+from rest_framework.permissions import IsAdminUser
+from rest_framework.decorators import api_view, permission_classes
+
+
 @api_view(["POST"])
+@permission_classes([IsAdminUser])
 def cleanup_all_videos(request):
     """
     Remove ALL video files from the server.
-
-    SECURITY MEASURES:
-    - Requires confirmation token
-    - Only works in DEBUG mode (development/testing)
-    - Comprehensive logging
-    - Rate limiting protection
-
-    WARNING: This is a destructive operation that removes ALL video data!
     """
-    logger.info("=== CLEANUP ALL VIDEOS REQUEST STARTED ===")
-    logger.info(f"Request data: {request.data}")
-    logger.info(f"Request IP: {request.META.get('REMOTE_ADDR', 'unknown')}")
-    logger.info(f"Request User-Agent: {request.META.get('HTTP_USER_AGENT', 'unknown')}")
-
-    # Security Check 1: Only allow in DEBUG mode (development/testing)
-    # if not settings.DEBUG:
-    #     logger.warning("Cleanup all videos attempted in production mode - BLOCKED")
-    #     logger.info("=== CLEANUP ALL VIDEOS REQUEST BLOCKED - PRODUCTION MODE ===")
-    #     return Response({
-    #         "success": False,
-    #         "error": "This operation is only allowed in development mode"
-    #     }, status=status.HTTP_403_FORBIDDEN)
-
-    # Security Check 2: Require confirmation token
-    confirmation_token = request.data.get("confirmation_token")
-    expected_token = os.getenv("DJANGO_SECRET_KEY")
-
-    if confirmation_token != expected_token:
-        logger.warning(
-            f"Cleanup all videos attempted with invalid token: {confirmation_token}"
-        )
-        logger.info("=== CLEANUP ALL VIDEOS REQUEST BLOCKED - INVALID TOKEN ===")
-        return Response(
-            {
-                "success": False,
-                "error": "Invalid confirmation token required for this destructive operation",
-            },
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
-
-    # Security Check 3: Additional confirmation field
+    logger.warning("=== CLEANUP ALL VIDEOS REQUEST STARTED BY ADMIN ===")
+    
+    # Security Check: Additional confirmation field
     confirm_action = request.data.get("confirm_action")
     if confirm_action != "DELETE_ALL_VIDEO_DATA":
-        logger.warning(
-            f"Cleanup all videos attempted without proper confirmation: {confirm_action}"
-        )
-        logger.info("=== CLEANUP ALL VIDEOS REQUEST BLOCKED - MISSING CONFIRMATION ===")
+        logger.warning(f"Cleanup all videos attempted without proper confirmation: {confirm_action}")
         return Response(
             {
                 "success": False,
@@ -593,120 +462,15 @@ def cleanup_all_videos(request):
 
     logger.warning("=== STARTING DESTRUCTIVE VIDEO CLEANUP OPERATION ===")
 
-    # Video directories to clean
-    video_directories = [
-        os.path.join(settings.MEDIA_ROOT, "videos"),
-        os.path.join(settings.MEDIA_ROOT, "interview_videos"),
-    ]
-
-    # Statistics tracking
-    total_files_before = 0
-    files_removed = 0
-    files_failed = 0
-    directories_processed = 0
-    cleanup_errors = []
-
-    # Count total files before cleanup
-    logger.info("Counting video files before cleanup...")
-    for video_dir in video_directories:
-        if os.path.exists(video_dir):
-            try:
-                for filename in os.listdir(video_dir):
-                    if filename.lower().endswith(
-                        (
-                            ".mp4",
-                            ".avi",
-                            ".mov",
-                            ".mkv",
-                            ".webm",
-                            ".m4v",
-                            ".3gp",
-                            ".flv",
-                        )
-                    ):
-                        total_files_before += 1
-                logger.info(
-                    f"Found {len([f for f in os.listdir(video_dir) if f.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm', '.m4v', '.3gp', '.flv'))])} video files in {video_dir}"
-                )
-            except Exception as e:
-                error_msg = f"Error counting files in {video_dir}: {str(e)}"
-                logger.error(error_msg)
-                cleanup_errors.append(error_msg)
-        else:
-            logger.info(f"Video directory does not exist: {video_dir}")
-
-    logger.info(f"Total video files before cleanup: {total_files_before}")
-
-    # Step 1: Remove all video files from directories
-    logger.info("Starting video file cleanup...")
-    for video_dir in video_directories:
-        if os.path.exists(video_dir):
-            directories_processed += 1
-            logger.info(f"Processing directory: {video_dir}")
-            try:
-                for filename in os.listdir(video_dir):
-                    if filename.lower().endswith(
-                        (
-                            ".mp4",
-                            ".avi",
-                            ".mov",
-                            ".mkv",
-                            ".webm",
-                            ".m4v",
-                            ".3gp",
-                            ".flv",
-                        )
-                    ):
-                        file_path = os.path.join(video_dir, filename)
-                        try:
-                            os.remove(file_path)
-                            files_removed += 1
-                            logger.info(f"Removed video file: {filename}")
-                        except Exception as e:
-                            files_failed += 1
-                            error_msg = (
-                                f"Failed to remove video file {filename}: {str(e)}"
-                            )
-                            logger.error(error_msg)
-                            cleanup_errors.append(error_msg)
-            except Exception as e:
-                error_msg = f"Error accessing video directory {video_dir}: {str(e)}"
-                logger.error(error_msg)
-                cleanup_errors.append(error_msg)
-        else:
-            logger.info(f"Video directory does not exist: {video_dir}")
-
-    # Determine success status
-    operation_success = files_failed == 0 and len(cleanup_errors) == 0
-
-    # Prepare response
-    cleanup_summary = {
-        "success": operation_success,
-        "operation": "cleanup_all_videos",
-        "timestamp": time.time(),
-        "statistics": {
-            "total_files_before": total_files_before,
-            "directories_processed": directories_processed,
-            "files_removed": files_removed,
-            "files_failed": files_failed,
-            "cleanup_errors": cleanup_errors,
-        },
-        "message": (
-            "Video cleanup operation completed"
-            if operation_success
-            else "Video cleanup completed with errors"
-        ),
-    }
+    results = InterviewService.cleanup_all_videos()
 
     logger.warning("=== VIDEO CLEANUP OPERATION COMPLETED ===")
-    logger.info(f"Cleanup summary: {cleanup_summary}")
-
-    # Return appropriate status code
-    response_status = (
-        status.HTTP_200_OK if operation_success else status.HTTP_206_PARTIAL_CONTENT
-    )
-
-    return Response(cleanup_summary, status=response_status)
+    
+    return Response({
+        "success": True,
+        "message": f"Deleted {results['deleted_files']} files and {results['deleted_directories']} directories",
+        "errors": results["errors"]
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(["GET", "POST"])

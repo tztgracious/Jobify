@@ -48,13 +48,29 @@ def get_questions_using_openai(interview_session):
     )
     response_text = response.json()["choices"][0]["message"]["content"]
     try:
+        from .models.question import Question
         questions = json.loads(response_text)
+        
+        # Legacy support (deprecated)
         interview_session.questions = questions["interview_question"]
         interview_session.tech_questions = questions["tech_question"]
         interview_session.question_status = InterviewSession.Status.COMPLETE
         interview_session.save()
-    except json.JSONDecodeError:
-        print(f"Error parsing questions: {response_text}")
+
+        # Create relational Question models
+        question_objects = []
+        for idx, text in enumerate(questions["tech_question"]):
+            question_objects.append(Question(session=interview_session, text=text, is_technical=True, index=idx))
+        for idx, text in enumerate(questions["interview_question"]):
+            question_objects.append(Question(session=interview_session, text=text, is_technical=False, index=idx))
+        
+        Question.objects.bulk_create(question_objects)
+        logger.info(f"Generated and saved {len(question_objects)} Question models for session {interview_session.id}")
+
+    except (json.JSONDecodeError, Exception) as e:
+        logger.error(f"Error parsing or saving questions: {e} | Response: {response_text}")
+        interview_session.question_status = InterviewSession.Status.FAILED
+        interview_session.save()
 
 
 def get_feedback_using_openai_text(interview_session):
@@ -167,13 +183,40 @@ def get_questions_using_openai_multi_agent(interview_session):
     
     # Save results to the database (same as original function)
     try:
+        from .models.question import Question
+        
+        # Legacy support (deprecated)
         interview_session.questions = interview_questions
         interview_session.tech_questions = tech_questions
         interview_session.question_status = InterviewSession.Status.COMPLETE
-        logger.info(f"Generated MA questions: {interview_questions} | Tech Questions: {tech_questions}")
         interview_session.save()
+
+        # Create relational Question models
+        question_objects = []
+        
+        # Add technical questions
+        for idx, text in enumerate(tech_questions):
+            question_objects.append(Question(
+                session=interview_session,
+                text=text,
+                is_technical=True,
+                index=idx
+            ))
+            
+        # Add general questions
+        for idx, text in enumerate(interview_questions):
+            question_objects.append(Question(
+                session=interview_session,
+                text=text,
+                is_technical=False,
+                index=idx
+            ))
+            
+        Question.objects.bulk_create(question_objects)
+        logger.info(f"Generated and saved {len(question_objects)} Question models for session {interview_session.id}")
+        
     except Exception as e:
-        print(f"Error saving multi-agent questions: {e}")
+        logger.error(f"Error saving multi-agent questions: {e}")
         interview_session.question_status = InterviewSession.Status.FAILED
         interview_session.save()
 
@@ -241,6 +284,20 @@ def get_feedback_using_openai_multi_agent(interview_session):
     # Format to match expected output
     feedback_questions = synthesized_feedback["question_feedback"]
     
+    # Populate relational Feedback models
+    try:
+        from .models.feedback import Feedback
+        all_questions = list(interview_session.related_questions.all())
+        for i, q in enumerate(all_questions):
+            if i < len(feedback_questions):
+                Feedback.objects.update_or_create(
+                    question=q,
+                    defaults={'feedback_text': feedback_questions[i]}
+                )
+        logger.info(f"Saved relational feedback for {len(all_questions)} questions")
+    except Exception as e:
+        logger.error(f"Error saving relational feedback for session {interview_session.id}: {e}")
+
     # Determine if we have tech feedback at the head
     has_tech = tech_questions and tech_answers and len(tech_questions) > 0 and len(tech_answers) > 0
     
